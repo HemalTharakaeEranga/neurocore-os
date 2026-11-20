@@ -16,6 +16,7 @@ pub const NEURO_TENSOR_MAGIC: u32 = 0x4E43_5431; // "NCT1"
 
 /// C-ABI tensor descriptor shared between Mojo kernels and iceoryx2 publishers.
 #[repr(C)]
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NeuroTensorHeader {
     pub magic: u32,
@@ -32,6 +33,8 @@ pub struct TensorChannelConfig {
     pub runtime_dir: String,
     pub backend: String,
     pub max_tensor_bytes: usize,
+    pub tensor_magic: u32,
+    pub tensor_header_bytes: usize,
 }
 
 impl TensorChannelConfig {
@@ -53,6 +56,8 @@ impl TensorChannelConfig {
             runtime_dir: runtime_dir.display().to_string(),
             backend,
             max_tensor_bytes: 64 * 1024 * 1024, // 64 MiB default loaned tensor slot
+            tensor_magic: NEURO_TENSOR_MAGIC,
+            tensor_header_bytes: std::mem::size_of::<NeuroTensorHeader>(),
         })
     }
 }

@@ -25,8 +25,8 @@ def audit_spdx(spdx_data: dict, policy: dict, profile: str) -> list[str]:
     forbidden_pkgs = [p.lower() for p in policy["global_forbidden_package_substrings"]]
     forbidden_pkgs.extend(p.lower() for p in prof_cfg.get("forbidden_package_substrings", []))
 
-    forbidden_lics = [l.lower() for l in policy["global_forbidden_license_substrings"]]
-    forbidden_lics.extend(l.lower() for l in prof_cfg.get("forbidden_license_substrings", []))
+    forbidden_lics = [lic.lower() for lic in policy["global_forbidden_license_substrings"]]
+    forbidden_lics.extend(lic.lower() for lic in prof_cfg.get("forbidden_license_substrings", []))
 
     violations: list[str] = []
     packages = spdx_data.get("packages", [])
