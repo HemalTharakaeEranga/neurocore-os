@@ -1,0 +1,4 @@
+# Stage custom-built .deb packages here prior to `mkosi build`:
+# - linux-image-6.18.64-neurocore_*.deb & linux-headers-*.deb (from `make kernel`)
+# - backported Mesa 26.3.x .deb packages (for RDNA 4, Intel Xe2/Xe3, Blackwell NVK, Rusticl OpenCL 3.1)
+# - scx_loader / scx_lavd / scx_bpfland .deb packages

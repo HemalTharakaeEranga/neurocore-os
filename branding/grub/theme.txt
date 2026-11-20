@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# NeuroCore OS v0.1.0-alpha ("Spark") GRUB2 Theme
+
+title-text: ""
+desktop-image: "background.png"
+desktop-color: "#0b0f14"
+terminal-font: "DejaVu Sans Mono Regular 14"
+terminal-left: "0"
+terminal-top: "0"
+terminal-width: "100%"
+terminal-height: "100%"
+
++ image {
+    left = 50%-64
+    top = 12%
+    width = 128
+    height = 128
+    file = "logo.png"
+}
+
++ label {
+    left = 0
+    top = 31%
+    width = 100%
+    align = "center"
+    text = "NEUROCORE OS 0.1.0-alpha (Spark)"
+    font = "DejaVu Sans Bold 20"
+    color = "#22c55e"
+}
+
++ boot_menu {
+    left = 20%
+    top = 40%
+    width = 60%
+    height = 38%
+    item_font = "DejaVu Sans Regular 16"
+    item_color = "#cccccc"
+    selected_item_color = "#ffffff"
+    item_height = 34
+    item_padding = 8
+    item_spacing = 6
+}
+
++ progress_bar {
+    id = "__timeout__"
+    left = 25%
+    top = 84%
+    width = 50%
+    height = 16
+    fg_color = "#22c55e"
+    bg_color = "#1f2937"
+    border_color = "#374151"
+    text_color = "#e5e7eb"
+    text = "@TIMEOUT_NOTIFICATION_MIDDLE@"
+}

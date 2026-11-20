@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[Plymouth Theme]
+Name=NeuroCore OS
+Description=Animated NeuroCore OS penguin-and-gear boot splash (dark #0b0f14)
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/neurocore
+ScriptFile=/usr/share/plymouth/themes/neurocore/neurocore.script

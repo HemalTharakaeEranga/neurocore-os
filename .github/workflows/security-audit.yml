@@ -1,0 +1,188 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Comprehensive NeuroCore OS Security Audit, Attack-Surface & Bug Detection Workflow.
+# Runs on every push, pull request, manual trigger, and weekly schedule to catch
+# secrets, code vulnerabilities, supply-chain risks, workflow misconfigurations,
+# and OS hardening regressions automatically.
+
+name: Security Audit & Hardening Gate
+
+on:
+  push:
+    branches: [main, "v0.1.0-*"]
+  pull_request:
+  schedule:
+    # Weekly Monday 03:00 UTC security sweep against newly disclosed CVEs
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  secret-scan:
+    name: Secret & Credential Leak Scan (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run checksum-verified Gitleaks binary
+        env:
+          GITLEAKS_VERSION: "8.24.2"
+        run: |
+          TMPD="$(mktemp -d)"
+          trap 'rm -rf "${TMPD}"' EXIT
+          ASSET="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${ASSET}" \
+            -o "${TMPD}/${ASSET}"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt" \
+            -o "${TMPD}/checksums.txt"
+          (cd "${TMPD}" && grep " ${ASSET}$" checksums.txt | sha256sum -c -)
+          tar -xzf "${TMPD}/${ASSET}" -C "${TMPD}" gitleaks
+          "${TMPD}/gitleaks" detect --source . --config .gitleaks.toml --verbose --redact
+
+  os-hardening-and-bug-gate:
+    name: File-by-File OS Hardening, Patch & Static Bug Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run NeuroCore OS Hardening & Bug Policy Verifier
+        run: |
+          python3 tests/verify-security-hardening.py
+          python3 tests/verify-sbom-licenses.py --self-test
+
+      - name: Strict ShellCheck Audit (info severity across all shell scripts)
+        run: |
+          shellcheck -S info \
+            scripts/*.sh \
+            kernel/*.sh \
+            mojo/scripts/*.sh \
+            ml-stack/*.sh \
+            branding/build-branding.sh \
+            branding/motd/10-neurocore \
+            mkosi/mkosi.postinst.chroot \
+            packaging/*.sh \
+            tests/*.sh
+
+      - name: Python SAST (Bandit + Ruff Security Rules)
+        run: |
+          python3 -m pip install --no-cache-dir bandit ruff
+          bandit -ll -r branding/scripts ml-stack tests
+          ruff check --select S,B,E,F --ignore E501 branding/scripts ml-stack tests
+
+  workflow-security-audit:
+    name: GitHub Actions Workflow Audit (actionlint + zizmor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install verified actionlint (checksum-checked) & zizmor
+        env:
+          ACTIONLINT_VERSION: "1.7.7"
+        run: |
+          python3 -m pip install --no-cache-dir zizmor
+          TMPD="$(mktemp -d)"
+          trap 'rm -rf "${TMPD}"' EXIT
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            -o "${TMPD}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_checksums.txt" \
+            -o "${TMPD}/checksums.txt"
+          (cd "${TMPD}" && grep "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" checksums.txt | sha256sum -c -)
+          tar -xzf "${TMPD}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -C "${TMPD}" actionlint
+          "${TMPD}/actionlint"
+          zizmor --config .github/zizmor.yml --persona regular .github/workflows
+
+  rust-security-audit:
+    name: Rust Security, Clippy & Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cargo Clippy (all warnings denied) & Unit Tests
+        working-directory: rust
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+
+      - name: RustSec CVE & License Gate (cargo-deny)
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: rust/Cargo.toml
+          arguments: --config rust/deny.toml check advisories bans sources
+
+  codeql-sast:
+    name: CodeQL SAST (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, actions]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  dependency-review:
+    name: PR Dependency Vulnerability Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: "Proprietary, MAX-License"

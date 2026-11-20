@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[Unit]
+Description=NeuroCore OS Local llama.cpp v1.0.0 Inference Server (AF_UNIX)
+After=neurocore-daemon.service
+ConditionPathExists=/usr/local/bin/llama-server
+
+[Service]
+Type=simple
+User=neuro
+Group=neuro
+Slice=neurocore.slice
+RuntimeDirectory=neurocore
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+# Intel i915 Vulkan watchdog mitigation (ggml-org/llama.cpp#27634)
+Environment=GGML_VK_SERIALIZE_SUBMISSIONS=1
+# Bind strictly to AF_UNIX socket: zero TCP/UDP exposure
+ExecStart=/usr/local/bin/llama-server \
+    --host /run/neurocore/llama.sock \
+    --models-dir /var/lib/neurocore/models
+Restart=on-failure
+RestartSec=5s
+MemoryHigh=4G
+MemoryMax=6G
+CPUWeight=350
+TasksMax=512
+# Defense-in-depth sandboxing (AF_UNIX only; zero outbound network; zero capabilities)
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @mount @reboot @swap @module @raw-io
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0027
+ReadWritePaths=/run/neurocore /var/lib/neurocore/models /var/lib/neurocore/cache
+
+[Install]
+WantedBy=multi-user.target

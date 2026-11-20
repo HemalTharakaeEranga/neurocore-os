@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[Unit]
+Description=NeuroCore OS Unified cgroup v2 ML/AI Workload Slice
+Before=slices.target
+
+[Slice]
+# Leave headroom between MemoryHigh (soft reclaim throttling) and MemoryMax
+# (hard OOM cap) so SSH and interactive notebooks never freeze during training.
+MemoryAccounting=yes
+CPUAccounting=yes
+IOAccounting=yes
+TasksAccounting=yes
+MemoryHigh=75%
+MemoryMax=88%
+CPUWeight=300
+IOWeight=200

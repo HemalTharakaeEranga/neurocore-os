@@ -1,0 +1,55 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[Unit]
+Description=NeuroCore OS MLflow Experiment Tracking Server
+After=network-online.target neurocore-daemon.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=neuro
+Group=neuro
+Slice=neurocore.slice
+WorkingDirectory=/var/lib/neurocore/mlflow
+ExecStart=/opt/ml/envs/python-ml/.venv/bin/mlflow server \
+    --host 127.0.0.1 --port 5000 \
+    --backend-store-uri sqlite:////var/lib/neurocore/mlflow/mlflow.db \
+    --default-artifact-root /var/lib/neurocore/mlflow/artifacts
+Restart=on-failure
+RestartSec=5s
+MemoryHigh=1536M
+MemoryMax=2G
+CPUWeight=150
+TasksMax=256
+# Defense-in-depth sandboxing (loopback-only eBPF IP filter; zero capabilities)
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @mount @reboot @swap @module @raw-io
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0027
+ReadWritePaths=/var/lib/neurocore/mlflow
+
+[Install]
+WantedBy=multi-user.target

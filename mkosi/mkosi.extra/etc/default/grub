@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=5
+GRUB_DISTRIBUTOR="NeuroCore OS"
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash lsm=landlock,lockdown,yama,apparmor,bpf lockdown=integrity init_on_alloc=1 init_on_free=1 slab_nomerge page_alloc.shuffle=1"
+GRUB_CMDLINE_LINUX="console=tty0 console=ttyS0,115200"
+GRUB_GFXMODE=auto
+GRUB_GFXPAYLOAD_LINUX=keep
+GRUB_THEME="/boot/grub/themes/neurocore/theme.txt"

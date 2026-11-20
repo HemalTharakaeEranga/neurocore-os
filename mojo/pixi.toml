@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+[workspace]
+name = "neurocore-mojo-runtime"
+version = "0.1.0"
+channels = ["https://conda.modular.com/max/", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+mojo = "==1.2.0"
+python = ">=3.12,<3.14"
+numpy = ">=2.0"
+
+[tasks]
+check = "mojo --version"
+build-simd = "mojo build kernels/simd_matmul.mojo -o /opt/ml/kernels/simd_matmul"
+build-bridge = "mojo build --emit shared-lib kernels/tensor_bridge.mojo -o /opt/ml/kernels/libneuro_tensor_bridge.so"
+test = "mojo run kernels/simd_matmul.mojo -- --selftest"

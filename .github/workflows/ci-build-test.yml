@@ -1,0 +1,124 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: CI Build & Dual-Firmware KVM Boot Test
+
+on:
+  push:
+    branches: [main, "v0.1.0-*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "mkosi build profile"
+        default: "baremetal-foss"
+        type: choice
+        options:
+          - baremetal-foss
+          - core-libre
+
+permissions: {}
+
+jobs:
+  rust-workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchain with rustfmt and clippy
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting, clippy, and unit tests
+        working-directory: rust
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+
+  build-and-boot-iso:
+    needs: rust-workspace
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Enable /dev/kvm access via kvm group (no world-writable 0666)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0660", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+          sudo usermod -aG kvm "${USER}"
+          sudo chgrp kvm /dev/kvm || true
+          sudo chmod 0660 /dev/kvm || true
+          sg kvm -c 'test -w /dev/kvm'
+
+      - name: Install OS image, branding, and QEMU/OVMF prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            imagemagick python3-pil grub-common grub-pc-bin grub-efi-amd64-bin \
+            fonts-dejavu-core squashfs-tools xorriso mtools dosfstools \
+            debian-archive-keyring systemd-container parted e2fsprogs \
+            qemu-system-x86 qemu-utils ovmf mkosi zstd jq
+
+      - name: Install Rust toolchain for user-space binaries
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Syft (verified checksum tarball, no curl|sh)
+        env:
+          SYFT_VERSION: "1.20.0"
+        run: |
+          TMPD="$(mktemp -d)"
+          trap 'rm -rf "${TMPD}"' EXIT
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" \
+            -o "${TMPD}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt" \
+            -o "${TMPD}/checksums.txt"
+          (cd "${TMPD}" && grep "syft_${SYFT_VERSION}_linux_amd64.tar.gz" checksums.txt | sha256sum -c -)
+          tar -xzf "${TMPD}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" -C "${TMPD}" syft
+          sudo install -m 0755 "${TMPD}/syft" /usr/local/bin/syft
+
+      - name: Run pre-build OS security hardening audit
+        run: python3 tests/verify-security-hardening.py
+
+      - name: Build dark-adapted branding assets across all 5 surfaces
+        run: make branding
+
+      - name: Build user-space Rust binaries
+        run: make rust-tools
+
+      - name: Stage verified MIT Fashion-MNIST & CC0 synthetic tabular datasets
+        run: make ml-stack
+
+      - name: Build mkosi image and reproducible hybrid BIOS/UEFI ISO
+        env:
+          PROFILE: ${{ inputs.profile || 'baremetal-foss' }}
+        run: |
+          make image PROFILE="${PROFILE}"
+          make iso PROFILE="${PROFILE}"
+          make sbom PROFILE="${PROFILE}"
+
+      - name: Run headless QEMU/KVM dual-firmware (BIOS + UEFI) boot smoke tests
+        env:
+          PROFILE: ${{ inputs.profile || 'baremetal-foss' }}
+        run: sg kvm -c "make verify"
+
+      - name: Upload boot console logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: qemu-boot-logs
+          path: tests/logs/

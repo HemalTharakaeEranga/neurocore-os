@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# AppArmor Mandatory Access Control profile for neurocore-daemon.
+# Confines the daemon strictly to read-only kernel/cgroup telemetry and its
+# AF_UNIX + iceoryx2 runtime directory under /run/neurocore/.
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile neurocore-daemon /usr/local/libexec/neurocore-daemon flags=(enforce) {
+  include <abstractions/base>
+
+  # Deny all raw network / TCP / UDP socket creation — AF_UNIX only
+  network unix stream,
+  network unix dgram,
+  deny network inet,
+  deny network inet6,
+  deny network raw,
+  deny network packet,
+
+  # Binary & read-only telemetry paths
+  /usr/local/libexec/neurocore-daemon mr,
+  /proc/sys/kernel/osrelease r,
+  /sys/kernel/neurocore/** r,
+  /sys/module/neurocore_telemetry/** r,
+  /sys/kernel/sched_ext/** r,
+  /sys/fs/cgroup/neurocore.slice/** r,
+  /dev/dri/ r,
+
+  # Runtime AF_UNIX socket & iceoryx2 shared-memory metadata
+  /run/neurocore/ rw,
+  /run/neurocore/daemon.sock rw,
+  /run/neurocore/llama.sock r,
+  /run/neurocore/iceoryx2/ rw,
+  /run/neurocore/iceoryx2/** rwk,
+  /dev/shm/iox2_* rwk,
+
+  # Explicitly deny sensitive host files
+  deny /etc/shadow rwx,
+  deny /root/** rwx,
+  deny /home/** rwx,
+}

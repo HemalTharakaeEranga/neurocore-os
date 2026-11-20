@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# scx_loader default configuration for NeuroCore OS v0.1.0-alpha ("Spark").
+# Selects scx_lavd in Auto mode; switch dynamically via `scxctl switch -m <mode>`.
+
+default_sched = "scx_lavd"
+default_mode = "Auto"
+
+[scheds.scx_lavd]
+auto_mode = []
+lowlatency_mode = ["--performance"]
+server_mode = ["--autopilot"]
+powersave_mode = ["--powersave"]
+
+[scheds.scx_bpfland]
+auto_mode = []
+lowlatency_mode = ["-m", "performance"]
+server_mode = ["-m", "auto"]
+powersave_mode = ["-m", "powersave"]

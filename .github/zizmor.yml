@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Zizmor GitHub Actions security policy for NeuroCore OS.
+# Enforces template-injection, artipacked, excessive-permissions,
+# dangerous-triggers, impostor-commit, and cache-poisoning audits while
+# allowing versioned major-tag action refs (e.g. @v6, @v4) alongside Dependabot.
+
+rules:
+  unpinned-uses:
+    disable: true

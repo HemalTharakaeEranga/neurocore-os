@@ -1,0 +1,4 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: GPL-2.0-only
+
+obj-m := neurocore_telemetry.o

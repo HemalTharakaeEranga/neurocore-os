@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[Unit]
+Description=sched_ext Dynamic eBPF Scheduler Loader (scx_loader)
+After=dbus.service
+ConditionPathExists=/sys/kernel/sched_ext/state
+ConditionPathExists=/usr/local/bin/scx_loader
+
+[Service]
+Type=dbus
+BusName=org.scx.Loader
+ExecStart=/usr/local/bin/scx_loader --config /etc/scx_loader/config.toml
+Restart=on-failure
+RestartSec=5s
+# Minimal capabilities strictly required to attach sched_ext BPF ops
+CapabilityBoundingSet=CAP_BPF CAP_SYS_ADMIN CAP_PERFMON CAP_SYS_RESOURCE
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelModules=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

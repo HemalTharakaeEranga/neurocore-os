@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# NeuroCore OS — neurocore-next (Linux 7.3+ tracking) Kconfig Addendum
+# Applied on top of neurocore_x86_64.fragment when KERNEL_TRACK=next.
+
+# Mainline Rust NVIDIA GPU driver (Nova)
+CONFIG_NOVA_CORE=m
+CONFIG_NOVA_DRM=m
+
+# Enhanced Rust-for-Linux kernel samples & abstractions (Linux 7.1+ / rustc >= 1.85)
+CONFIG_RUST_DEBUG_ASSERTIONS=n
+CONFIG_RUST_OVERFLOW_CHECKS=y
+
+# Modern scheduling & cache topology awareness
+CONFIG_SCHED_CLUSTER=y
+CONFIG_SCHED_MC=y

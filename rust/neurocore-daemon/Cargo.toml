@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "neurocore-daemon"
+description = "NeuroCore OS system supervisor daemon: Unix control plane, iceoryx2 zero-copy tensor IPC, and cgroup/GPU telemetry"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "neurocore-daemon"
+path = "src/main.rs"
+
+[features]
+default = []
+# Enable native Eclipse iceoryx2 v0.10.0 lock-free shared-memory pub/sub channel
+iox2 = ["dep:iceoryx2"]
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+iceoryx2 = { version = "0.10", optional = true }

@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# NeuroCore OS runtime policy & hardware override defaults
+
+[os]
+version = "0.1.0-alpha"
+codename = "Spark"
+mlflow_uri = "http://127.0.0.1:5000"
+jupyter_url = "http://127.0.0.1:8888"
+
+[ipc]
+daemon_socket = "/run/neurocore/daemon.sock"
+llama_socket = "/run/neurocore/llama.sock"
+iceoryx2_dir = "/run/neurocore/iceoryx2"
+
+[hardware]
+enforce_x86_64_v3_for_mojo = true
+auto_i915_vk_serialize = true
+skip_lavapipe_for_llama_cpp = true
+
+[addons]
+# Strict opt-in quarantine: never enabled by default
+max_enabled = false
+nvidia_cuda_enabled = false

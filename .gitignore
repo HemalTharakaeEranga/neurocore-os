@@ -1,0 +1,58 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# Build outputs & release artifacts
+/out/
+/build/
+*.iso
+*.raw
+*.vdi
+*.qcow2
+*.img
+*.tar.zst
+*.sigstore.json
+SHA256SUMS
+
+# Kernel build directories & downloaded tarballs
+/kernel/src/
+/kernel/build/
+/kernel/*.tar.xz
+/kernel/*.tar.sign
+/kernel/rust-modules/neurocore_telemetry/*.o
+/kernel/rust-modules/neurocore_telemetry/*.ko
+/kernel/rust-modules/neurocore_telemetry/*.mod*
+/kernel/rust-modules/neurocore_telemetry/.*.cmd
+/kernel/rust-modules/neurocore_telemetry/Module.symvers
+/kernel/rust-modules/neurocore_telemetry/modules.order
+
+# Rust build cache
+/rust/target/
+
+# Pixi & uv local environments
+.pixi/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Generated branding artifacts (built by branding/build-branding.sh)
+/branding/generated/
+
+# mkosi caches & staged local packages
+/mkosi/mkosi.cache/
+/mkosi/mkosi.builddir/
+/mkosi/mkosi.packages/*.deb
+/mkosi/mkosi.extra/boot/grub/themes/neurocore/
+/mkosi/mkosi.extra/usr/share/plymouth/themes/neurocore/
+/mkosi/mkosi.extra/usr/share/icons/hicolor/
+/mkosi/mkosi.extra/usr/share/neurocore/datasets/
+
+# Test logs & temporary VM state
+/tests/logs/
+/tests/work/
+*.log
+
+# OS/Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

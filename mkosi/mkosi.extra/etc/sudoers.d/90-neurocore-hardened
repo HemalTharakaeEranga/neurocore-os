@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Hardened sudoers policy for NeuroCore OS (NO NOPASSWD:ALL).
+
+Defaults use_pty
+Defaults env_reset
+Defaults mail_badpass
+Defaults passwd_tries=3
+Defaults timestamp_timeout=5
+Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Defaults logfile="/var/log/sudo.log"
+
+%sudo ALL=(ALL:ALL) ALL

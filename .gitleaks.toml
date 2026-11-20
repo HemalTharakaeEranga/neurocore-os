@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Gitleaks secret-detection policy for NeuroCore OS
+
+title = "NeuroCore OS Secret & Credential Scanner"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow public GPG maintainer fingerprints and dataset checksums"
+paths = [
+    '''^kernel/fetch-kernel\.sh$''',
+    '''^ml-stack/fetch-datasets\.sh$''',
+    '''^tests/verify-security-hardening\.py$''',
+]

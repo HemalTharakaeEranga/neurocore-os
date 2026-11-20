@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "neuro-linfa-polars-starter"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Pure-Rust classical ML + columnar dataframes (linfa-linalg avoids external BLAS/LAPACK)
+polars = { version = "0.49", features = ["csv", "lazy"] }
+linfa = "0.8.1"
+linfa-linalg = "0.2.1"

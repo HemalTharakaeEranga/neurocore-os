@@ -1,0 +1,89 @@
+# FSFE REUSE Specification 3.3
+version = 1
+SPDX-PackageName = "NeuroCore OS"
+SPDX-PackageDownloadLocation = "https://github.com/HemalTharakaeEranga/neurocore-os"
+
+[[annotations]]
+path = [
+    "Icon.jpg",
+    "Icon.gif",
+    "branding/source/**",
+    "branding/grub/*.png",
+    "branding/plymouth/*.png",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 NeuroCore OS Contributors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = [
+    "branding/build-branding.sh",
+    "branding/scripts/**",
+    "branding/grub/theme.txt",
+    "branding/plymouth/neurocore.plymouth",
+    "branding/plymouth/neurocore.script",
+    "branding/motd/**",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 NeuroCore OS Contributors"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = [
+    "kernel/configs/**",
+    "kernel/patches/**",
+    "kernel/rust-modules/**",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 NeuroCore OS Contributors"
+SPDX-License-Identifier = "GPL-2.0-only"
+
+[[annotations]]
+path = [
+    "kernel/Makefile",
+    "kernel/fetch-kernel.sh",
+    "kernel/build-kernel-deb.sh",
+    "rust/**",
+    "ml-stack/**",
+    "mkosi/**",
+    "packaging/**",
+    "scripts/**",
+    "tests/**",
+    ".github/**",
+    "Makefile",
+    "VERSION",
+    ".gitignore",
+    ".gitattributes",
+    ".gitleaks.toml",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 NeuroCore OS Contributors"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = ["LICENSE"]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 NeuroCore OS Contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = ["mojo/**"]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 NeuroCore OS Contributors"
+SPDX-License-Identifier = "Apache-2.0 WITH LLVM-exception"
+
+[[annotations]]
+path = [
+    "README.md",
+    "LICENSING.md",
+    "TRADEMARKS.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "SECURITY.md",
+    "GOVERNANCE.md",
+    "CHANGELOG.md",
+    "docs/**",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 NeuroCore OS Contributors"
+SPDX-License-Identifier = "CC-BY-4.0"

@@ -1,0 +1,27 @@
+// SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+// Dark #0b0f14 background matching GRUB2 and CLUT224 framebuffer boot logo
+Window.SetBackgroundTopColor(0.043, 0.059, 0.078);
+Window.SetBackgroundBottomColor(0.043, 0.059, 0.078);
+
+// Updated automatically by branding/build-branding.sh to match Icon.gif frame count
+frame_count = 30;
+for (i = 0; i < frame_count; i++) {
+    padded = i < 10 ? "00" + i : (i < 100 ? "0" + i : "" + i);
+    frames[i] = Image("frame-" + padded + ".png");
+}
+
+sprite = Sprite();
+sprite.SetImage(frames[0]);
+sprite.SetX(Window.GetWidth() / 2 - frames[0].GetWidth() / 2);
+sprite.SetY(Window.GetHeight() / 2 - frames[0].GetHeight() / 2);
+
+tick = 0;
+fun refresh_callback() {
+    idx = Math.Int(tick / 2) % frame_count;
+    sprite.SetImage(frames[idx]);
+    tick++;
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);

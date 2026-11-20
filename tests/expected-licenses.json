@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "description": "NeuroCore OS v0.1.0-alpha SPDX SBOM license & package quarantine policy",
+  "global_forbidden_package_substrings": [
+    "modular-max",
+    "max-engine",
+    "nvidia-cuda",
+    "libcuda",
+    "libcudnn",
+    "libnccl",
+    "cudnn",
+    "nccl",
+    "rocprof-trace-decoder",
+    "aocc"
+  ],
+  "global_forbidden_license_substrings": [
+    "max-license",
+    "limited-source",
+    "nvidia-proprietary",
+    "cuda-eula",
+    "amd-proprietary"
+  ],
+  "profiles": {
+    "core-libre": {
+      "description": "Strictly Debian main: zero non-free-firmware blobs, zero proprietary or source-available stacks",
+      "forbidden_package_substrings": [
+        "firmware-amd-graphics",
+        "firmware-intel-graphics",
+        "firmware-misc-nonfree",
+        "firmware-nvidia"
+      ],
+      "forbidden_license_substrings": [
+        "non-free-firmware",
+        "non-free"
+      ]
+    },
+    "baremetal-foss": {
+      "description": "Debian main + redistributable GPU microcode (non-free-firmware) + FOSS Mesa/ROCm/Intel NEO; MAX and CUDA strictly quarantined",
+      "forbidden_package_substrings": [],
+      "forbidden_license_substrings": []
+    }
+  }
+}

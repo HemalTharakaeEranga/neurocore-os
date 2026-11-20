@@ -1,0 +1,3 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+"""NeuroCore OS Python ML self-test package."""
