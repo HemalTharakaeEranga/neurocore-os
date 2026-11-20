@@ -14,7 +14,6 @@ SPDX_IDS=(
     "GPL-2.0-only"
     "Apache-2.0"
     "MIT"
-    "BSD-3-Clause"
     "CC-BY-4.0"
     "CC-BY-SA-4.0"
     "CC0-1.0"

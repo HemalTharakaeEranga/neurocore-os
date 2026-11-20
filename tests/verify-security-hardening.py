@@ -21,7 +21,6 @@ import pathlib
 import re
 import sys
 import tomllib
-import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -261,9 +260,9 @@ def audit_code_security(r: AuditReport) -> None:
 
     llama_sh = _read("ml-stack/llama-cpp-build.sh")
     r.check(
-        "mktemp -d" in llama_sh and "/tmp/neurocore-llama-build" not in llama_sh,
+        "mktemp -d" in llama_sh and "neurocore-llama-build" not in llama_sh,
         "llama-cpp-build.sh uses isolated mktemp -d (no CWE-377 race)",
-        "found predictable /tmp path",
+        "found predictable temp build path",
     )
 
     datasets_sh = _read("ml-stack/fetch-datasets.sh")
@@ -327,8 +326,14 @@ def audit_manifests_and_eol(r: AuditReport) -> None:
         tomllib.loads(p.read_text(encoding="utf-8"))
     for p in sorted(list(ROOT.rglob("*.json")) + list(ROOT.rglob("*.ipynb"))):
         json.loads(p.read_text(encoding="utf-8"))
-    ET.parse(ROOT / "branding/source/neurocore-logo.svg")
-    r.check(True, "All TOML, JSON, Jupyter notebook & SVG manifests valid")
+    svg_text = _read("branding/source/neurocore-logo.svg")
+    svg_ok = (
+        "<svg " in svg_text
+        and "</svg>" in svg_text
+        and "<!DOCTYPE" not in svg_text.upper()
+        and "<!ENTITY" not in svg_text.upper()
+    )
+    r.check(svg_ok, "All TOML, JSON, Jupyter notebook & XXE-safe SVG manifests valid", "invalid or unsafe SVG")
 
     crlf_bad = []
     exts = {

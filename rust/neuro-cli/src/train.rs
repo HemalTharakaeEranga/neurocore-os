@@ -104,9 +104,11 @@ fn try_switch_scheduler(mode: &str) {
         "powersave" | "power-save" => "powersave",
         _ => "auto",
     };
-    if let Ok(status) = Command::new("scxctl").args(["switch", "-m", scx_mode]).status() {
-        if status.success() {
-            println!("==> sched_ext switched to mode '{}'", scx_mode);
-        }
+    if Command::new("scxctl")
+        .args(["switch", "-m", scx_mode])
+        .status()
+        .is_ok_and(|s| s.success())
+    {
+        println!("==> sched_ext switched to mode '{}'", scx_mode);
     }
 }

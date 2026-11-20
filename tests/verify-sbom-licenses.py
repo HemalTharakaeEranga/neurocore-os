@@ -66,16 +66,20 @@ def run_selftest(policy_path: Path) -> int:
             {"name": "mesa-vulkan-drivers", "licenseDeclared": "MIT"},
         ],
     }
-    assert audit_spdx(clean_sbom, policy, "core-libre") == []
-    assert audit_spdx(clean_sbom, policy, "baremetal-foss") == []
+    if audit_spdx(clean_sbom, policy, "core-libre"):
+        raise AssertionError("clean_sbom unexpectedly failed core-libre")
+    if audit_spdx(clean_sbom, policy, "baremetal-foss"):
+        raise AssertionError("clean_sbom unexpectedly failed baremetal-foss")
 
     fw_sbom = {
         "packages": [
             {"name": "firmware-amd-graphics", "licenseDeclared": "LicenseRef-Debian-non-free-firmware"},
         ]
     }
-    assert len(audit_spdx(fw_sbom, policy, "core-libre")) >= 1
-    assert audit_spdx(fw_sbom, policy, "baremetal-foss") == []
+    if not audit_spdx(fw_sbom, policy, "core-libre"):
+        raise AssertionError("fw_sbom should fail core-libre")
+    if audit_spdx(fw_sbom, policy, "baremetal-foss"):
+        raise AssertionError("fw_sbom should pass baremetal-foss")
 
     bad_sbom = {
         "packages": [
@@ -84,8 +88,10 @@ def run_selftest(policy_path: Path) -> int:
             {"name": "rocprof-trace-decoder", "licenseDeclared": "AMD-Proprietary-EULA"},
         ]
     }
-    assert len(audit_spdx(bad_sbom, policy, "baremetal-foss")) >= 3
-    assert len(audit_spdx(bad_sbom, policy, "core-libre")) >= 3
+    if len(audit_spdx(bad_sbom, policy, "baremetal-foss")) < 3:
+        raise AssertionError("bad_sbom must flag all 3 forbidden entries in baremetal-foss")
+    if len(audit_spdx(bad_sbom, policy, "core-libre")) < 3:
+        raise AssertionError("bad_sbom must flag all 3 forbidden entries in core-libre")
 
     print("[PASS] verify-sbom-licenses.py policy self-test passed.")
     return 0

@@ -44,12 +44,18 @@ pub fn run(template: &str, name: &str) -> Result<()> {
 /// Rejects path traversal (CWE-22), absolute paths, leading dashes, and control chars.
 fn validate_project_name(name: &str) -> Result<()> {
     if name.is_empty() || name.len() > 128 {
-        bail!("Invalid project name '{}': must be 1..128 characters.", name);
+        bail!(
+            "Invalid project name '{}': must be 1..128 characters.",
+            name
+        );
     }
     if name.starts_with('-') {
         bail!("Invalid project name '{}': cannot begin with '-'.", name);
     }
-    if name.chars().any(|c| c.is_control() || c == '\\' || c == '/') {
+    if name
+        .chars()
+        .any(|c| c.is_control() || c == '\\' || c == '/')
+    {
         bail!(
             "Invalid project name '{}': use a single safe directory name without path separators.",
             name

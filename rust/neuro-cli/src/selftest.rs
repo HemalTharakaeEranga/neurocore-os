@@ -13,10 +13,14 @@ pub fn run(no_systemd: bool) -> Result<()> {
 
     // Gate 1: OS identity
     match fs::read_to_string("/etc/os-release") {
-        Ok(content) if content.contains("ID=neurocore") && content.contains("VERSION_ID=\"0.1.0\"") => {
+        Ok(content)
+            if content.contains("ID=neurocore") && content.contains("VERSION_ID=\"0.1.0\"") =>
+        {
             println!("[PASS] Gate 1: /etc/os-release matches NeuroCore OS 0.1.0");
         }
-        Ok(_) => failures.push("Gate 1: /etc/os-release missing ID=neurocore or VERSION_ID=\"0.1.0\""),
+        Ok(_) => {
+            failures.push("Gate 1: /etc/os-release missing ID=neurocore or VERSION_ID=\"0.1.0\"")
+        }
         Err(_) => failures.push("Gate 1: /etc/os-release unreadable"),
     }
 
@@ -26,7 +30,9 @@ pub fn run(no_systemd: bool) -> Result<()> {
     {
         println!("[PASS] Gate 2: neurocore_telemetry Rust kernel module active");
     } else {
-        println!("[WARN] Gate 2: neurocore_telemetry not currently loaded (run `sudo modprobe neurocore_telemetry`)");
+        println!(
+            "[WARN] Gate 2: neurocore_telemetry not currently loaded (run `sudo modprobe neurocore_telemetry`)"
+        );
     }
 
     // Gate 3: Unified cgroups v2 & systemd ML services

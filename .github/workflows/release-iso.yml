@@ -24,7 +24,7 @@ jobs:
       matrix:
         profile: [core-libre, baremetal-foss]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -42,6 +42,7 @@ jobs:
             gcc g++ clang-19 lld-19 llvm-19 bindgen rustc rust-src \
             imagemagick python3-pil grub-common grub-pc-bin grub-efi-amd64-bin \
             fonts-dejavu-core squashfs-tools xorriso mtools dosfstools \
+            debian-archive-keyring systemd-container parted e2fsprogs \
             qemu-system-x86 qemu-utils ovmf mkosi zstd jq gpgv debhelper dpkg-dev
 
       - name: Install verified Syft & Grype binaries (checksum-checked, no curl|sh)
@@ -129,7 +130,7 @@ jobs:
             out/neurocore-*-${{ matrix.profile }}-sources.tar.zst
 
       - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: neurocore-release-${{ matrix.profile }}
           path: |

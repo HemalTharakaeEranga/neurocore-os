@@ -193,7 +193,10 @@ fn run_linfa_ols_smoke() -> CheckOutcome {
         name: "linfa",
         passed: ok,
         elapsed_ms: t0.elapsed().as_secs_f64() * 1000.0,
-        detail: format!("pure-Rust OLS fit slope={:.4} intercept={:.4}", slope, intercept),
+        detail: format!(
+            "pure-Rust OLS fit slope={:.4} intercept={:.4}",
+            slope, intercept
+        ),
     }
 }
 

@@ -20,7 +20,7 @@ from pathlib import Path
 
 def generate(out_dir: Path, rows: int, seed: int) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311 (deterministic synthetic ML dataset)
 
     csv_path = out_dir / "neurocore_tabular_v1.csv"
     fieldnames = ["f0", "f1", "f2", "f3", "f4", "f5", "label"]

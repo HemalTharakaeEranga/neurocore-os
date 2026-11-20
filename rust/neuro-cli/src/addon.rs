@@ -101,7 +101,10 @@ fn enable_addon(name: &str, accepted_flag: bool) -> Result<()> {
 
     let addon_dir = Path::new(ADDONS_DIR).join(spec.id);
     if addon_dir.exists() && fs::symlink_metadata(&addon_dir)?.file_type().is_symlink() {
-        bail!("Refusing to use symlinked addon directory {}", addon_dir.display());
+        bail!(
+            "Refusing to use symlinked addon directory {}",
+            addon_dir.display()
+        );
     }
     fs::create_dir_all(&addon_dir)?;
     #[cfg(unix)]

@@ -60,7 +60,10 @@ pub fn serve(socket_path: &Path, iox2_cfg: &TensorChannelConfig) -> Result<()> {
 }
 
 #[cfg(unix)]
-fn handle_client(stream: &mut std::os::unix::net::UnixStream, iox2_cfg: &TensorChannelConfig) -> Result<()> {
+fn handle_client(
+    stream: &mut std::os::unix::net::UnixStream,
+    iox2_cfg: &TensorChannelConfig,
+) -> Result<()> {
     use std::io::{BufRead, BufReader, Read, Write};
     use std::time::Duration;
 

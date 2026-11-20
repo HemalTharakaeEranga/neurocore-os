@@ -132,7 +132,6 @@ def convert_gif(gif_path: Path, out_dir: Path, size: int) -> int:
         u_max_x = max(u_max_x, x1)
         u_max_y = max(u_max_y, y1)
 
-    w, h = processed[0].size
     bw = max(1, u_max_x - u_min_x)
     bh = max(1, u_max_y - u_min_y)
     side = int(round(max(bw, bh) * 1.16))

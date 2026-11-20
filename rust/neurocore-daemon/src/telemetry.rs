@@ -18,8 +18,8 @@ pub struct TelemetrySnapshot {
 }
 
 pub fn collect_snapshot() -> TelemetrySnapshot {
-    let kernel_release = read_trimmed("/proc/sys/kernel/osrelease")
-        .unwrap_or_else(|| "unknown".into());
+    let kernel_release =
+        read_trimmed("/proc/sys/kernel/osrelease").unwrap_or_else(|| "unknown".into());
 
     let rust_telemetry_module = read_trimmed("/sys/kernel/neurocore/status")
         .or_else(|| read_trimmed("/sys/module/neurocore_telemetry/initstate"))
@@ -27,13 +27,12 @@ pub fn collect_snapshot() -> TelemetrySnapshot {
 
     let slice_root = "/sys/fs/cgroup/neurocore.slice";
     let cgroup_slice_memory_current_bytes =
-        read_trimmed(&format!("{}/memory.current", slice_root))
-            .and_then(|s| s.parse::<u64>().ok());
+        read_trimmed(&format!("{}/memory.current", slice_root)).and_then(|s| s.parse::<u64>().ok());
     let cgroup_slice_memory_high = read_trimmed(&format!("{}/memory.high", slice_root));
     let cgroup_slice_memory_max = read_trimmed(&format!("{}/memory.max", slice_root));
 
-    let sched_ext_state = read_trimmed("/sys/kernel/sched_ext/state")
-        .unwrap_or_else(|| "unavailable".into());
+    let sched_ext_state =
+        read_trimmed("/sys/kernel/sched_ext/state").unwrap_or_else(|| "unavailable".into());
 
     let llama_socket_present = Path::new("/run/neurocore/llama.sock").exists();
 

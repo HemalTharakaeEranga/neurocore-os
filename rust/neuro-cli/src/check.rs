@@ -104,7 +104,11 @@ pub fn run(isa_only: bool, run_bench: bool, as_json: bool) -> Result<()> {
         println!("Architecture        : {}", report.arch);
         println!(
             "x86-64-v3 / SIMD    : {} {}",
-            if report.x86_64_v3_ready { "READY" } else { "MISSING FLAGS" },
+            if report.x86_64_v3_ready {
+                "READY"
+            } else {
+                "MISSING FLAGS"
+            },
             if report.missing_isa_flags.is_empty() {
                 String::new()
             } else {
@@ -114,19 +118,33 @@ pub fn run(isa_only: bool, run_bench: bool, as_json: bool) -> Result<()> {
         println!(
             "System Memory       : {:.2} GiB ({})",
             report.total_ram_gib,
-            if report.ram_meets_mojo_floor { "OK >= 8 GiB floor" } else { "LOW < 8 GiB" }
+            if report.ram_meets_mojo_floor {
+                "OK >= 8 GiB floor"
+            } else {
+                "LOW < 8 GiB"
+            }
         );
         println!(
             "C Linker            : {}",
-            report.c_linker_found.as_deref().unwrap_or("MISSING (gcc/clang required for Mojo)")
+            report
+                .c_linker_found
+                .as_deref()
+                .unwrap_or("MISSING (gcc/clang required for Mojo)")
         );
         println!(
             "Virtualization      : {}",
-            report.virtualized_env.as_deref().unwrap_or("Bare metal / None detected")
+            report
+                .virtualized_env
+                .as_deref()
+                .unwrap_or("Bare metal / None detected")
         );
         println!(
             "AMD ROCm (/dev/kfd) : {}",
-            if report.amd_kfd_present { "Present" } else { "Not detected" }
+            if report.amd_kfd_present {
+                "Present"
+            } else {
+                "Not detected"
+            }
         );
         println!(
             "DRM Render Nodes    : {}",
@@ -138,7 +156,11 @@ pub fn run(isa_only: bool, run_bench: bool, as_json: bool) -> Result<()> {
         );
         println!(
             "Unified cgroup v2   : {}",
-            if report.cgroup_v2_active { "Active" } else { "Inactive" }
+            if report.cgroup_v2_active {
+                "Active"
+            } else {
+                "Inactive"
+            }
         );
         println!("sched_ext State     : {}", report.sched_ext_state);
         println!(
@@ -147,8 +169,16 @@ pub fn run(isa_only: bool, run_bench: bool, as_json: bool) -> Result<()> {
         );
         println!(
             "IPC Sockets         : daemon={} llama={}",
-            if report.daemon_socket_ready { "UP" } else { "DOWN" },
-            if report.llama_socket_ready { "UP" } else { "DOWN" }
+            if report.daemon_socket_ready {
+                "UP"
+            } else {
+                "DOWN"
+            },
+            if report.llama_socket_ready {
+                "UP"
+            } else {
+                "DOWN"
+            }
         );
 
         if !report.recommended_env.is_empty() {
@@ -231,10 +261,8 @@ fn detect_hypervisor() -> Option<String> {
             return Some("QEMU/KVM".into());
         }
     }
-    if let Ok(cpuinfo) = fs::read_to_string("/proc/cpuinfo") {
-        if cpuinfo.contains("hypervisor") {
-            return Some("Hypervisor (generic)".into());
-        }
+    if fs::read_to_string("/proc/cpuinfo").is_ok_and(|c| c.contains("hypervisor")) {
+        return Some("Hypervisor (generic)".into());
     }
     None
 }
@@ -259,8 +287,8 @@ fn detect_intel_i915() -> bool {
 
 fn read_sched_ext_state() -> String {
     if let Ok(state) = fs::read_to_string("/sys/kernel/sched_ext/state") {
-        let ops = fs::read_to_string("/sys/kernel/sched_ext/root/ops")
-            .unwrap_or_else(|_| "none".into());
+        let ops =
+            fs::read_to_string("/sys/kernel/sched_ext/root/ops").unwrap_or_else(|_| "none".into());
         return format!("{} (ops={})", state.trim(), ops.trim());
     }
     "Unavailable (CONFIG_SCHED_CLASS_EXT not active)".into()
@@ -276,20 +304,22 @@ fn command_exists(name: &str) -> bool {
     };
     for dir in env::split_paths(&path_var) {
         let candidate = dir.join(name);
-        if let Ok(meta) = fs::metadata(&candidate) {
-            if meta.is_file() {
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    if meta.permissions().mode() & 0o111 != 0 {
-                        return true;
-                    }
-                }
-                #[cfg(not(unix))]
-                {
-                    return true;
-                }
+        let Ok(meta) = fs::metadata(&candidate) else {
+            continue;
+        };
+        if !meta.is_file() {
+            continue;
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if meta.permissions().mode() & 0o111 != 0 {
+                return true;
             }
+        }
+        #[cfg(not(unix))]
+        {
+            return true;
         }
     }
     false
