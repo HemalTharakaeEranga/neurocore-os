@@ -1,0 +1,137 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Release ISO, VDI, QCOW2, GPLv2 CCS & Sigstore Provenance
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: true
+      matrix:
+        profile: [core-libre, baremetal-foss]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run pre-release OS security hardening & compliance audit
+        run: |
+          python3 tests/verify-sbom-licenses.py --self-test
+          python3 tests/verify-security-hardening.py
+
+      - name: Install host build, packaging, and compliance tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison flex dwarves libssl-dev libelf-dev cpio kmod \
+            gcc g++ clang-19 lld-19 llvm-19 bindgen rustc rust-src \
+            imagemagick python3-pil grub-common grub-pc-bin grub-efi-amd64-bin \
+            fonts-dejavu-core squashfs-tools xorriso mtools dosfstools \
+            qemu-system-x86 qemu-utils ovmf mkosi zstd jq gpgv debhelper dpkg-dev
+
+      - name: Install verified Syft & Grype binaries (checksum-checked, no curl|sh)
+        env:
+          SYFT_VERSION: "1.20.0"
+          GRYPE_VERSION: "0.87.0"
+        run: |
+          TMPD="$(mktemp -d)"
+          trap 'rm -rf "${TMPD}"' EXIT
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" \
+            -o "${TMPD}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt" \
+            -o "${TMPD}/syft-checksums.txt"
+          (cd "${TMPD}" && grep "syft_${SYFT_VERSION}_linux_amd64.tar.gz" syft-checksums.txt | sha256sum -c -)
+          tar -xzf "${TMPD}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" -C "${TMPD}" syft
+          sudo install -m 0755 "${TMPD}/syft" /usr/local/bin/syft
+
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz" \
+            -o "${TMPD}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_checksums.txt" \
+            -o "${TMPD}/grype-checksums.txt"
+          (cd "${TMPD}" && grep "grype_${GRYPE_VERSION}_linux_amd64.tar.gz" grype-checksums.txt | sha256sum -c -)
+          tar -xzf "${TMPD}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz" -C "${TMPD}" grype
+          sudo install -m 0755 "${TMPD}/grype" /usr/local/bin/grype
+
+      - name: Install Rust toolchain for user-space binaries
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Sigstore cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Build branding, Rust tools, custom Linux 6.18 LTS kernel, and datasets
+        run: |
+          make branding
+          make rust-tools
+          make kernel
+          make ml-stack
+
+      - name: Build mkosi image, hybrid ISO, VirtualBox VDI, QEMU QCOW2 & GPLv2 CCS
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          make image PROFILE="${PROFILE}"
+          make iso vdi qcow2 PROFILE="${PROFILE}"
+          make sbom PROFILE="${PROFILE}"
+          make gpl-sources PROFILE="${PROFILE}"
+
+      - name: Grype SBOM Critical CVE Gate
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          VERSION="$(cat VERSION)"
+          grype "sbom:out/neurocore-${VERSION}-${PROFILE}.cdx.json" --fail-on critical
+
+      - name: Compute SHA256SUMS and keyless Sigstore cosign bundles
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          VERSION="$(cat VERSION)"
+          cd out
+          ARTIFACTS=(
+            "neurocore-${VERSION}-${PROFILE}-amd64.iso"
+            "neurocore-${VERSION}-${PROFILE}-amd64.vdi"
+            "neurocore-${VERSION}-${PROFILE}-amd64.qcow2"
+            "neurocore-${VERSION}-${PROFILE}-sources.tar.zst"
+            "neurocore-${VERSION}-${PROFILE}.spdx.json"
+            "neurocore-${VERSION}-${PROFILE}.cdx.json"
+          )
+          sha256sum "${ARTIFACTS[@]}" > "SHA256SUMS-${PROFILE}"
+          for f in "${ARTIFACTS[@]}" "SHA256SUMS-${PROFILE}"; do
+            cosign sign-blob --yes --bundle "${f}.sigstore.json" "${f}"
+          done
+
+      - name: Generate SLSA v1 Build Provenance Attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            out/neurocore-*-${{ matrix.profile }}-*.iso
+            out/neurocore-*-${{ matrix.profile }}-*.vdi
+            out/neurocore-*-${{ matrix.profile }}-*.qcow2
+            out/neurocore-*-${{ matrix.profile }}-sources.tar.zst
+
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurocore-release-${{ matrix.profile }}
+          path: |
+            out/neurocore-*-${{ matrix.profile }}*
+            out/SHA256SUMS-${{ matrix.profile }}*

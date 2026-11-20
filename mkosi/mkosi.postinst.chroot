@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Hardened chroot post-installation script for NeuroCore OS v0.1.0-alpha.
+# Enforces least-privilege accounts, zero static SSH host keys, default-deny
+# nftables firewall, AppArmor confinement, and deterministic reproducibility.
+set -euo pipefail
+
+echo "==> [mkosi.postinst] Configuring hardened NeuroCore OS v0.1.0-alpha ('Spark')"
+
+# 1. Canonical FHS 3.0 /etc/os-release symlink
+if [[ -f /usr/lib/os-release ]]; then
+    ln -sf ../usr/lib/os-release /etc/os-release
+fi
+
+# 2. Lock root login password and provision unprivileged accounts
+passwd -l root || true
+chmod 0700 /root
+
+if ! id -u neuro >/dev/null 2>&1; then
+    useradd -m -s /bin/bash -G sudo,video,render,plugdev neuro
+    # Local console live-session bootstrap credential; forced rotation on first login.
+    # Remote SSH password login is strictly disabled by 10-neurocore-hardening.conf.
+    printf '%s:%s\n' "neuro" "neurocore" | chpasswd
+    chage -d 0 neuro || true
+fi
+
+# Dedicated non-login system account for neurocore-daemon (never runs as root)
+if ! id -u neurocore >/dev/null 2>&1; then
+    useradd --system --no-create-home --shell /usr/sbin/nologin --gid neuro neurocore
+fi
+
+# Enforce hardened sudoers permissions (NO NOPASSWD:ALL)
+if [[ -f /etc/sudoers.d/90-neurocore-hardened ]]; then
+    chown root:root /etc/sudoers.d/90-neurocore-hardened
+    chmod 0440 /etc/sudoers.d/90-neurocore-hardened
+fi
+rm -f /etc/sudoers.d/90-neurocore
+
+# 3. Strip static SSH host keys so every installation/boot generates unique keys
+rm -f /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub
+systemctl disable ssh.service ssh.socket >/dev/null 2>&1 || true
+
+# 4. Create hardened FHS 3.0 directories with strict least-privilege permissions
+install -d -m 0755 \
+    /opt/ml/toolchains/rust \
+    /opt/ml/envs/mojo \
+    /opt/ml/envs/python-ml \
+    /opt/ml/kernels \
+    /opt/ml/addons \
+    /usr/share/neurocore/templates \
+    /usr/share/neurocore/datasets \
+    /usr/share/neurocore/sbom \
+    /usr/share/neurocore/licenses
+
+install -d -o neuro -g neuro -m 0750 \
+    /var/lib/neurocore \
+    /var/lib/neurocore/mlflow \
+    /var/lib/neurocore/mlflow/artifacts \
+    /var/lib/neurocore/models \
+    /var/lib/neurocore/cache \
+    /home/neuro/workspace \
+    /home/neuro/notebooks
+
+chmod 0750 /home/neuro
+chmod 0640 /etc/neurocore/neuro.toml || true
+chmod 0600 /etc/nftables.conf || true
+
+# 5. Configure Plymouth default theme & regenerate lean initramfs (<400 MiB)
+if command -v plymouth-set-default-theme >/dev/null 2>&1 && \
+   [[ -f /usr/share/plymouth/themes/neurocore/neurocore.plymouth ]]; then
+    plymouth-set-default-theme neurocore || true
+fi
+
+if command -v update-initramfs >/dev/null 2>&1; then
+    update-initramfs -u -k all || true
+fi
+
+# 6. Enable hardened NeuroCore services, firewall, and AppArmor MAC
+for unit in \
+    nftables.service \
+    apparmor.service \
+    neurocore-ssh-keygen.service \
+    neurocore-daemon.service \
+    neurocore-mlflow.service \
+    neurocore-jupyter.service \
+    neurocore-llama.service \
+    scx_loader.service; do
+    if [[ -f "/etc/systemd/system/${unit}" || -f "/usr/lib/systemd/system/${unit}" ]]; then
+        systemctl enable "${unit}" || true
+    fi
+done
+
+# 7. Reproducibility & anti-leakage scrubbing
+truncate -s 0 /etc/machine-id
+rm -rf /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/* \
+       /var/log/*.log /tmp/* /var/tmp/* /root/.bash_history /home/neuro/.bash_history
+
+if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then
+    echo "==> Clamping mtimes to SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}"
+    find /etc /usr /opt /var/lib/neurocore -xdev -newermt "@${SOURCE_DATE_EPOCH}" \
+        -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} + 2>/dev/null || true
+fi
+
+echo "==> [mkosi.postinst] Hardened rootfs setup complete."

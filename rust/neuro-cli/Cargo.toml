@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "neuro-cli"
+description = "NeuroCore OS developer CLI: hardware preflight, templates, sched_ext control, addons, and self-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "neuro"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true

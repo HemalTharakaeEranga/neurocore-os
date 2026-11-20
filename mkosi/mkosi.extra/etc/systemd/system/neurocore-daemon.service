@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[Unit]
+Description=NeuroCore OS System Supervisor Daemon (AF_UNIX + iceoryx2 IPC)
+After=local-fs.target systemd-udev-settle.service
+Before=neurocore-mlflow.service neurocore-jupyter.service neurocore-llama.service
+
+[Service]
+Type=simple
+User=neurocore
+Group=neuro
+Slice=neurocore.slice
+RuntimeDirectory=neurocore
+RuntimeDirectoryMode=0750
+ExecStart=/usr/local/libexec/neurocore-daemon \
+    --socket /run/neurocore/daemon.sock \
+    --iox2-dir /run/neurocore/iceoryx2
+Restart=on-failure
+RestartSec=3s
+MemoryHigh=256M
+MemoryMax=512M
+CPUWeight=200
+TasksMax=128
+# Defense-in-depth sandboxing (AF_UNIX only; zero TCP/UDP sockets; zero capabilities)
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @mount @reboot @swap @module @raw-io
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryDenyWriteExecute=yes
+UMask=0027
+ReadWritePaths=/run/neurocore
+
+[Install]
+WantedBy=multi-user.target

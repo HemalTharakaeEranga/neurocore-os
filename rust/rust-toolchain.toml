@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[toolchain]
+# Dedicated user-space ML Rust toolchain (>=1.95 required for Burn; >=1.89 for iceoryx2).
+# Isolated from Debian 13's system /usr/bin/rustc (1.85) used for Linux 6.18 LTS kernel builds.
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

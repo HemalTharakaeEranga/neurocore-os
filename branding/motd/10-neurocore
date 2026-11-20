@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+GREEN='\033[38;2;34;197;94m'
+DIM='\033[38;2;148;163;184m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+KERNEL="$(uname -r)"
+SCHED="unavailable"
+if [[ -r /sys/kernel/sched_ext/state ]]; then
+    SCHED="$(cat /sys/kernel/sched_ext/state)"
+    if [[ -r /sys/kernel/sched_ext/root/ops ]]; then
+        SCHED="${SCHED} ($(cat /sys/kernel/sched_ext/root/ops))"
+    fi
+fi
+
+shopt -s nullglob
+DRI_LIST=(/dev/dri/renderD*)
+shopt -u nullglob
+if (( ${#DRI_LIST[@]} > 0 )); then
+    GPU_NODES="${DRI_LIST[*]}"
+else
+    GPU_NODES="CPU / Lavapipe fallback"
+fi
+
+FW_STATE="inactive"
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet nftables.service 2>/dev/null; then
+    FW_STATE="active (default-deny inbound)"
+fi
+
+printf '\n%b%b  NEUROCORE OS 0.1.0-alpha ("Spark")%b\n' "${GREEN}" "${BOLD}" "${RESET}"
+printf '%b  Hardened Free & Open-Source AI/ML Operating System%b\n\n' "${DIM}" "${RESET}"
+printf '  Kernel     : %s\n' "${KERNEL}"
+printf '  sched_ext  : %s\n' "${SCHED}"
+printf '  Firewall   : %s\n' "${FW_STATE}"
+printf '  Render GPU : %s\n' "${GPU_NODES}"
+printf '  MLflow UI  : %bhttp://127.0.0.1:5000%b (loopback only)\n' "${GREEN}" "${RESET}"
+printf '  JupyterLab : %bhttp://127.0.0.1:8888%b (loopback only)\n' "${GREEN}" "${RESET}"
+printf '  LLM Socket : unix:///run/neurocore/llama.sock\n'
+printf '  Quickstart : run %bneuro check --bench%b or %bneuro new mojo-simd demo%b\n\n' "${BOLD}" "${RESET}" "${BOLD}" "${RESET}"

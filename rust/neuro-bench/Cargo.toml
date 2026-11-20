@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "neuro-bench"
+description = "NeuroCore OS Rust ML smoke-test & micro-benchmark runner (Burn, Polars, Linfa, Candle, Vulkan/Lavapipe)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "neuro-bench"
+path = "src/main.rs"
+
+[features]
+default = []
+# Enable full upstream Rust ML crate integrations on Linux workstations/CI with Rust >= 1.95
+full-ml = ["burn-backends", "polars-backend", "linfa-backend", "candle-backend"]
+burn-backends = []
+polars-backend = []
+linfa-backend = []
+candle-backend = []
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true

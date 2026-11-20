@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[project]
+name = "neurocore-python-ml"
+version = "0.1.0a1"
+description = "NeuroCore OS v0.1.0-alpha isolated uv Python ML & tracking environment"
+requires-python = ">=3.12,<3.14"
+license = { text = "MIT OR Apache-2.0" }
+
+dependencies = [
+    "torch==2.15.0",
+    "transformers>=4.55.0",
+    "huggingface-hub>=0.35.0",
+    "scikit-learn>=1.6.0",
+    "polars>=1.25.0",
+    "mlflow==3.18.0",
+    "jupyterlab>=4.3.0",
+    "ipykernel>=6.29.0",
+    "numpy>=2.1.0",
+    "pillow>=11.0.0",
+    "psutil>=6.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.8.0",
+]
+
+[tool.uv]
+# Default to pure-FOSS CPU wheels (manylinux_2_28, CXX11_ABI=1).
+# AMD ROCm 10.0 and Intel XPU wheels are selectable via explicit uv index profiles;
+# proprietary NVIDIA CUDA wheels are strictly quarantined behind `neuro addon enable nvidia-cuda`.
+index-strategy = "unsafe-best-match"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm10.0"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-xpu"
+url = "https://download.pytorch.org/whl/xpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["neuro_selftest"]

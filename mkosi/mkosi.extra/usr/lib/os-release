@@ -1,0 +1,15 @@
+NAME="NeuroCore OS"
+VERSION="0.1.0-alpha (Spark)"
+ID=neurocore
+ID_LIKE=debian
+VERSION_ID="0.1.0"
+VERSION_CODENAME=spark
+PRETTY_NAME="NeuroCore OS 0.1.0-alpha (Spark)"
+IMAGE_ID=neurocore-workstation
+IMAGE_VERSION="0.1.0-alpha.1"
+RELEASE_TYPE=alpha
+LOGO=neurocore-logo
+ANSI_COLOR="0;38;2;34;197;94"
+HOME_URL="https://neurocore-os.org/"
+DOCUMENTATION_URL="https://docs.neurocore-os.org/"
+BUG_REPORT_URL="https://github.com/HemalTharakaeEranga/neurocore-os/issues"

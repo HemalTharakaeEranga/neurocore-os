@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[workspace]
+name = "neurocore-ml-stack"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = ">=3.12,<3.14"
+cmake = ">=3.28"
+ninja = ">=1.11"
+pkg-config = "*"
+numpy = ">=2.0"
+
+[feature.cpu.dependencies]
+openblas = "*"
+
+[feature.rocm.dependencies]
+# Open-source ROCm user-space helpers (excluding AMD proprietary/ channel)
+cmake = ">=3.28"
+
+[feature.dev.dependencies]
+pytest = ">=8.0"
+ruff = ">=0.8"
+
+[environments]
+default = { features = ["cpu"], solve-group = "default" }
+rocm = { features = ["rocm"], solve-group = "rocm" }
+dev = { features = ["cpu", "dev"], solve-group = "default" }
+
+[tasks]
+fetch-datasets = "./fetch-datasets.sh /usr/share/neurocore/datasets"
+build-llama = "./llama-cpp-build.sh"

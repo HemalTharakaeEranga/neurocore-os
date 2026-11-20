@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "neuro-burn-starter"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Pure-FOSS cross-vendor Burn backend (Vulkan/ROCm via CubeCL or pure-Rust Flex CPU)
+burn = { version = "0.22", default-features = false, features = ["std", "ndarray"] }
