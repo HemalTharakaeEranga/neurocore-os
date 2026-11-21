@@ -53,7 +53,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Enable /dev/kvm access via kvm group (no world-writable 0666)
+      - name: Enable /dev/kvm access via kvm group & allow mkosi unprivileged userns on runner
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0660", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -61,6 +61,7 @@ jobs:
           sudo usermod -aG kvm "${USER}"
           sudo chgrp kvm /dev/kvm || true
           sudo chmod 0660 /dev/kvm || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           sg kvm -c 'test -w /dev/kvm'
 
       - name: Install OS image, branding, and QEMU/OVMF prerequisites
@@ -69,7 +70,7 @@ jobs:
           sudo apt-get install -y \
             imagemagick python3-pil grub-common grub-pc-bin grub-efi-amd64-bin \
             fonts-dejavu-core squashfs-tools xorriso mtools dosfstools \
-            debian-archive-keyring systemd-container parted e2fsprogs \
+            debian-archive-keyring systemd-container systemd-repart parted e2fsprogs dpkg-dev \
             qemu-system-x86 qemu-utils ovmf mkosi zstd jq
 
       - name: Install Rust toolchain for user-space binaries
@@ -122,3 +123,4 @@ jobs:
         with:
           name: qemu-boot-logs
           path: tests/logs/
+          if-no-files-found: ignore

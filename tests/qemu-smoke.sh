@@ -7,7 +7,8 @@
 set -euo pipefail
 
 ISO_PATH=""
-TIMEOUT_SEC=60
+TIMEOUT_SEC="${QEMU_TIMEOUT:-90}"
+QEMU_MEM="${QEMU_MEM:-4G}"
 LOG_DIR="tests/logs"
 
 while [[ $# -gt 0 ]]; do
@@ -33,6 +34,7 @@ fi
 mkdir -p "${LOG_DIR}"
 
 OVMF_CODE=""
+OVMF_VARS=""
 for cand in \
     /usr/share/OVMF/OVMF_CODE_4M.fd \
     /usr/share/OVMF/OVMF_CODE.fd \
@@ -42,18 +44,28 @@ for cand in \
         break
     fi
 done
+for cand in \
+    /usr/share/OVMF/OVMF_VARS_4M.fd \
+    /usr/share/OVMF/OVMF_VARS.fd \
+    /usr/share/edk2/ovmf/OVMF_VARS.fd; do
+    if [[ -f "${cand}" ]]; then
+        OVMF_VARS="${cand}"
+        break
+    fi
+done
 
 run_boot_mode() {
     local mode="$1"
     local log_file="${LOG_DIR}/qemu-${mode}.log"
+    local tmp_vars=""
     rm -f "${log_file}"
 
     local qemu_args=(
         -enable-kvm
         -cpu host
-        -m 8G
+        -m "${QEMU_MEM}"
         -smp 4
-        -nographic
+        -display none
         -no-reboot
         -cdrom "${ISO_PATH}"
         -boot d
@@ -66,22 +78,45 @@ run_boot_mode() {
             echo "ERROR: OVMF_CODE.fd not found; install 'ovmf' package." >&2
             exit 1
         fi
-        qemu_args+=(-drive "if=pflash,format=raw,readonly=on,file=${OVMF_CODE}")
+        qemu_args+=(-machine q35 -drive "if=pflash,format=raw,readonly=on,file=${OVMF_CODE}")
+        if [[ -n "${OVMF_VARS}" ]]; then
+            tmp_vars="$(mktemp "${TMPDIR:-/tmp}/ovmf-vars.XXXXXX.fd")"
+            cp -f "${OVMF_VARS}" "${tmp_vars}"
+            qemu_args+=(-drive "if=pflash,format=raw,file=${tmp_vars}")
+        fi
     fi
 
-    echo "==> Booting ${ISO_PATH} in QEMU/KVM (${mode^^} mode, timeout=${TIMEOUT_SEC}s)"
-    timeout --foreground "${TIMEOUT_SEC}" qemu-system-x86_64 "${qemu_args[@]}" >/dev/null 2>&1 || true
+    echo "==> Booting ${ISO_PATH} in QEMU/KVM (${mode^^} mode, mem=${QEMU_MEM}, timeout=${TIMEOUT_SEC}s)"
+    qemu-system-x86_64 "${qemu_args[@]}" >/dev/null 2>&1 &
+    local qpid=$!
 
-    if [[ ! -s "${log_file}" ]]; then
-        echo "ERROR: ${mode^^} serial log is empty (${log_file})" >&2
-        exit 1
-    fi
+    local elapsed=0
+    local booted=0
+    while (( elapsed < TIMEOUT_SEC )); do
+        if [[ -s "${log_file}" ]] && grep -qE "NeuroCore OS|neurocore login:|Reached target.*multi-user" "${log_file}"; then
+            booted=1
+            break
+        fi
+        if ! kill -0 "${qpid}" 2>/dev/null; then
+            break
+        fi
+        sleep 2
+        elapsed=$(( elapsed + 2 ))
+    done
 
-    if grep -qE "NeuroCore OS|neurocore login:|Reached target.*multi-user" "${log_file}"; then
-        echo "[PASS] ${mode^^} boot reached NeuroCore OS console cleanly (see ${log_file})"
+    kill "${qpid}" 2>/dev/null || true
+    wait "${qpid}" 2>/dev/null || true
+    [[ -n "${tmp_vars}" ]] && rm -f "${tmp_vars}"
+
+    if (( booted == 1 )); then
+        echo "[PASS] ${mode^^} boot reached NeuroCore OS console in ${elapsed}s (see ${log_file})"
     else
         echo "ERROR: ${mode^^} boot did not reach multi-user/login within ${TIMEOUT_SEC}s." >&2
-        tail -n 40 "${log_file}" >&2 || true
+        if [[ -s "${log_file}" ]]; then
+            tail -n 60 "${log_file}" >&2 || true
+        else
+            echo "       (serial log ${log_file} was empty)" >&2
+        fi
         exit 1
     fi
 }

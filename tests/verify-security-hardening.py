@@ -187,6 +187,18 @@ def audit_os_defense_in_depth(r: AuditReport) -> None:
         "missing module blacklist entries",
     )
 
+    r.check(
+        (ROOT / "mkosi/mkosi.repart/00-esp.conf").is_file()
+        and (ROOT / "mkosi/mkosi.repart/10-root.conf").is_file(),
+        "Deterministic mkosi.repart GPT ESP + ext4 root layout",
+        "missing mkosi/mkosi.repart/{00-esp,10-root}.conf",
+    )
+    r.check(
+        "getent group plugdev" in postinst,
+        "Safe optional group handling in mkosi.postinst.chroot",
+        "postinst should guard optional plugdev group",
+    )
+
 
 def audit_systemd_sandboxing(r: AuditReport) -> None:
     svc_dir = ROOT / "mkosi/mkosi.extra/etc/systemd/system"
@@ -284,6 +296,19 @@ def audit_github_workflows(r: AuditReport) -> None:
     wf_dir = ROOT / ".github/workflows"
     wfs = sorted(wf_dir.glob("*.yml"))
     r.check(len(wfs) >= 4, "All 4 GitHub Actions workflows present", f"found {len(wfs)}")
+
+    sec_wf = _read(".github/workflows/security-audit.yml")
+    r.check(
+        "grype" in sec_wf and "trivy" in sec_wf and "dependency-review-action" in sec_wf,
+        "Always-on Grype + Trivy + PR dependency vulnerability scanning",
+        "security-audit.yml missing always-on Grype/Trivy vulnerability scan",
+    )
+    ci_wf = _read(".github/workflows/ci-build-test.yml")
+    r.check(
+        "if-no-files-found: ignore" in ci_wf,
+        "CI boot-log artifact upload handles missing logs cleanly",
+        "ci-build-test.yml missing if-no-files-found: ignore",
+    )
 
     for wf in wfs:
         txt = wf.read_text(encoding="utf-8")

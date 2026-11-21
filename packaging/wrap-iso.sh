@@ -75,22 +75,27 @@ SPDX_OUT="${OUT_DIR}/neurocore-${VERSION}-${PROFILE}.spdx.json"
 CDX_OUT="${OUT_DIR}/neurocore-${VERSION}-${PROFILE}.cdx.json"
 if command -v syft >/dev/null 2>&1; then
     echo "==> Generating Syft SPDX and CycloneDX SBOMs from staged rootfs"
-    syft "dir:${MNT_ROOT}" \
+    sudo syft "dir:${MNT_ROOT}" \
         -o "spdx-json=${SPDX_OUT}" \
         -o "cyclonedx-json=${CDX_OUT}"
+    sudo chown "$(id -u):$(id -g)" "${SPDX_OUT}" "${CDX_OUT}" || true
 else
     echo "WARNING: 'syft' not installed; skipping SBOM generation." >&2
 fi
 
 # 2. Extract vmlinuz and initrd.img and enforce GRUB's 462 MiB BIOS ceiling
-VMLINUZ="$(find "${MNT_ROOT}/boot" -maxdepth 1 -type f -name 'vmlinuz-*' | sort -V | tail -n 1)"
-INITRD="$(find "${MNT_ROOT}/boot" -maxdepth 1 -type f -name 'initrd.img-*' | sort -V | tail -n 1)"
+VMLINUZ="$(sudo find "${MNT_ROOT}/boot" -maxdepth 1 -type f -name 'vmlinuz-*' 2>/dev/null | sort -V | tail -n 1 || true)"
+if [[ -z "${VMLINUZ}" ]]; then
+    VMLINUZ="$(sudo find "${MNT_ROOT}/usr/lib/modules" -maxdepth 2 -type f -name 'vmlinuz' 2>/dev/null | sort -V | tail -n 1 || true)"
+fi
+INITRD="$(sudo find "${MNT_ROOT}/boot" -maxdepth 1 -type f -name 'initrd.img-*' 2>/dev/null | sort -V | tail -n 1 || true)"
 if [[ -z "${VMLINUZ}" || -z "${INITRD}" ]]; then
     echo "ERROR: vmlinuz-* or initrd.img-* missing under ${MNT_ROOT}/boot" >&2
+    sudo ls -la "${MNT_ROOT}/boot" >&2 || true
     exit 1
 fi
 
-INITRD_BYTES="$(stat -c '%s' "${INITRD}")"
+INITRD_BYTES="$(sudo stat -c '%s' "${INITRD}")"
 INITRD_MIB="$(( INITRD_BYTES / 1048576 ))"
 echo "==> Kernel: $(basename "${VMLINUZ}"), Initrd: $(basename "${INITRD}") (${INITRD_MIB} MiB)"
 if (( INITRD_MIB >= 400 )); then
@@ -98,8 +103,9 @@ if (( INITRD_MIB >= 400 )); then
     exit 1
 fi
 
-cp -f "${VMLINUZ}" "${ISO_STAGE}/live/vmlinuz"
-cp -f "${INITRD}" "${ISO_STAGE}/live/initrd.img"
+sudo cp -f "${VMLINUZ}" "${ISO_STAGE}/live/vmlinuz"
+sudo cp -f "${INITRD}" "${ISO_STAGE}/live/initrd.img"
+sudo chown "$(id -u):$(id -g)" "${ISO_STAGE}/live/vmlinuz" "${ISO_STAGE}/live/initrd.img"
 cp -f "${SCRIPT_DIR}/grub-iso.cfg" "${ISO_STAGE}/boot/grub/grub.cfg"
 if [[ -d "${MNT_ROOT}/boot/grub/themes/neurocore" ]]; then
     mkdir -p "${ISO_STAGE}/boot/grub/themes"

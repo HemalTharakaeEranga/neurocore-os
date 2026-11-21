@@ -19,7 +19,11 @@ passwd -l root || true
 chmod 0700 /root
 
 if ! id -u neuro >/dev/null 2>&1; then
-    useradd -m -s /bin/bash -G sudo,video,render,plugdev neuro
+    AUX_GROUPS="sudo,video,render"
+    if getent group plugdev >/dev/null 2>&1; then
+        AUX_GROUPS="${AUX_GROUPS},plugdev"
+    fi
+    useradd -m -s /bin/bash -G "${AUX_GROUPS}" neuro
     # Local console live-session bootstrap credential; forced rotation on first login.
     # Remote SSH password login is strictly disabled by 10-neurocore-hardening.conf.
     printf '%s:%s\n' "neuro" "neurocore" | chpasswd

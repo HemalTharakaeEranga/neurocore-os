@@ -140,7 +140,9 @@ jobs:
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
           manifest-path: rust/Cargo.toml
-          arguments: --config rust/deny.toml check advisories bans sources
+          arguments: --config rust/deny.toml
+          command: check
+          command-arguments: advisories bans licenses sources
 
   codeql-sast:
     name: CodeQL SAST (${{ matrix.language }})
@@ -170,19 +172,65 @@ jobs:
         with:
           category: "/language:${{ matrix.language }}"
 
-  dependency-review:
-    name: PR Dependency Vulnerability Review
-    if: github.event_name == 'pull_request'
+  dependency-vulnerability-scan:
+    name: Dependency, Config & Repo Vulnerability Scan (Grype + Trivy + PR Review)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/dependency-review-action@v4
+
+      - name: Scan repository dependencies & configs with checksum-verified Syft, Grype & Trivy
+        env:
+          SYFT_VERSION: "1.20.0"
+          GRYPE_VERSION: "0.87.0"
+          TRIVY_VERSION: "0.58.2"
+        run: |
+          TMPD="$(mktemp -d)"
+          trap 'rm -rf "${TMPD}"' EXIT
+
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" \
+            -o "${TMPD}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_checksums.txt" \
+            -o "${TMPD}/syft-checksums.txt"
+          (cd "${TMPD}" && grep "syft_${SYFT_VERSION}_linux_amd64.tar.gz$" syft-checksums.txt | sha256sum -c -)
+          tar -xzf "${TMPD}/syft_${SYFT_VERSION}_linux_amd64.tar.gz" -C "${TMPD}" syft
+
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz" \
+            -o "${TMPD}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_checksums.txt" \
+            -o "${TMPD}/grype-checksums.txt"
+          (cd "${TMPD}" && grep "grype_${GRYPE_VERSION}_linux_amd64.tar.gz$" grype-checksums.txt | sha256sum -c -)
+          tar -xzf "${TMPD}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz" -C "${TMPD}" grype
+
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+            -o "${TMPD}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_checksums.txt" \
+            -o "${TMPD}/trivy-checksums.txt"
+          (cd "${TMPD}" && grep "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz$" trivy-checksums.txt | sha256sum -c -)
+          tar -xzf "${TMPD}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" -C "${TMPD}" trivy
+
+          echo "==> Generating repository SBOM with Syft"
+          "${TMPD}/syft" dir:. -o "cyclonedx-json=${TMPD}/repo.cdx.json"
+
+          echo "==> Auditing SBOM for High/Critical CVEs with Grype"
+          "${TMPD}/grype" "sbom:${TMPD}/repo.cdx.json" --fail-on high
+
+          echo "==> Scanning all files for CVEs, misconfigurations & secrets with Trivy"
+          "${TMPD}/trivy" fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --exit-code 1 .
+
+      - name: PR Diff Dependency Review (runs automatically on Pull Requests)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
           deny-licenses: "Proprietary, MAX-License"
