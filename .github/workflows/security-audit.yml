@@ -233,4 +233,4 @@ jobs:
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
-          deny-licenses: "Proprietary, MAX-License"
+          deny-licenses: "BUSL-1.1, SSPL-1.0, Elastic-2.0"
