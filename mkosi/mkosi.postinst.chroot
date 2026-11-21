@@ -58,27 +58,42 @@ install -d -m 0755 \
     /usr/share/neurocore/sbom \
     /usr/share/neurocore/licenses
 
-install -d -o neuro -g neuro -m 0750 \
+install -d -m 0750 \
     /var/lib/neurocore \
     /var/lib/neurocore/mlflow \
     /var/lib/neurocore/mlflow/artifacts \
     /var/lib/neurocore/models \
     /var/lib/neurocore/cache \
+    /home/neuro \
     /home/neuro/workspace \
     /home/neuro/notebooks
+
+# Best-effort ownership in privileged builds; rootless mkosi defers UID 1000
+# ownership cleanly to /usr/lib/tmpfiles.d/neurocore.conf on first boot.
+chown -R neuro:neuro /var/lib/neurocore /home/neuro 2>/dev/null || true
 
 chmod 0750 /home/neuro
 chmod 0640 /etc/neurocore/neuro.toml || true
 chmod 0600 /etc/nftables.conf || true
 
-# 5. Configure Plymouth default theme & regenerate lean initramfs (<400 MiB)
+# 5. Configure Plymouth default theme & build lean initramfs (<400 MiB)
 if command -v plymouth-set-default-theme >/dev/null 2>&1 && \
    [[ -f /usr/share/plymouth/themes/neurocore/neurocore.plymouth ]]; then
     plymouth-set-default-theme neurocore || true
 fi
 
 if command -v update-initramfs >/dev/null 2>&1; then
-    update-initramfs -u -k all || true
+    shopt -s nullglob
+    for moddir in /lib/modules/* /usr/lib/modules/*; do
+        [[ -d "${moddir}" ]] || continue
+        kver="$(basename "${moddir}")"
+        if [[ -f "/boot/initrd.img-${kver}" ]]; then
+            update-initramfs -u -k "${kver}" || true
+        else
+            update-initramfs -c -k "${kver}" || true
+        fi
+    done
+    shopt -u nullglob
 fi
 
 # 6. Enable hardened NeuroCore services, firewall, and AppArmor MAC
