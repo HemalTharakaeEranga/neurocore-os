@@ -44,7 +44,7 @@ cleanup() {
     set +e
     mountpoint -q "${MNT_ROOT}" && sudo umount "${MNT_ROOT}"
     [[ -n "${LOOP_DEV}" ]] && sudo losetup -d "${LOOP_DEV}"
-    rm -rf "${WORK_DIR}"
+    sudo rm -rf "${WORK_DIR}"
 }
 trap cleanup EXIT
 
@@ -133,6 +133,9 @@ sudo mksquashfs "${MNT_ROOT}" "${ISO_STAGE}/live/filesystem.squashfs" \
        'var/tmp/*'
 
 # 4. Assemble reproducible tri-mode hybrid BIOS/UEFI ISO via grub-mkrescue
+# Note: arguments after `--` use native xorriso syntax (`-volume_date uuid`),
+# while SOURCE_DATE_EPOCH clamps all RockRidge/ISO/ESP timestamps cleanly.
+export SOURCE_DATE_EPOCH
 ISO_DATE="$(date -u -d "@${SOURCE_DATE_EPOCH}" +%Y%m%d%H%M%S00)"
 ISO_OUT="${OUT_DIR}/neurocore-${VERSION}-${PROFILE}-${ARCH}.iso"
 VOLID="NEUROCORE_010"
@@ -142,7 +145,7 @@ grub-mkrescue \
     -o "${ISO_OUT}" \
     "${ISO_STAGE}" \
     -- -volid "${VOLID}" \
-    --modification-date="${ISO_DATE}"
+    -volume_date uuid "${ISO_DATE}"
 
 # 5. Verify El Torito BIOS + UEFI boot records
 echo "==> Verifying El Torito boot catalog via xorriso"
