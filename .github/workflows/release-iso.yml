@@ -39,8 +39,8 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           sudo apt-get update
           sudo apt-get install -y \
-            bc bison flex dwarves libssl-dev libelf-dev cpio kmod \
-            gcc g++ clang-19 lld-19 llvm-19 bindgen rustc rust-src \
+            bc bison flex dwarves libssl-dev libelf-dev cpio kmod openssl \
+            gcc g++ clang lld llvm libclang-dev bindgen rustc rust-src \
             imagemagick python3-pil grub-common grub-pc-bin grub-efi-amd64-bin \
             fonts-dejavu-core squashfs-tools xorriso mtools dosfstools \
             debian-archive-keyring systemd-container systemd-repart parted e2fsprogs \
@@ -81,9 +81,11 @@ jobs:
 
       - name: Build branding, Rust tools, custom Linux 6.18 LTS kernel, and datasets
         run: |
-          make branding
           make rust-tools
           make kernel
+          # Free ~10 GB of transient kernel build objects before mkosi/ISO/VDI packaging
+          # while preserving kernel/src/linux-*.tar.xz and *.tar.sign for GPLv2 CCS.
+          rm -rf kernel/build kernel/src/linux-*/
           make ml-stack
 
       - name: Build mkosi image, hybrid ISO, VirtualBox VDI, QEMU QCOW2 & GPLv2 CCS

@@ -64,17 +64,50 @@ if [[ ! -f "${PATCH_STAMP}" ]]; then
     touch "${PATCH_STAMP}"
 fi
 
-# 3. Verify Rust-for-Linux availability with Debian system rustc (isolated from /opt/ml rustup 1.100)
-echo "==> Verifying make LLVM=1 rustavailable with RUSTC=${RUSTC_BIN}"
-make -C "${SRC_DIR}" O="${BUILD_DIR}" LLVM=1 RUSTC="${RUSTC_BIN}" BINDGEN="${BINDGEN_BIN}" rustavailable
+# 3. Resolve matched Clang + LLD + LLVM toolchain and align LIBCLANG_PATH for bindgen
+LLVM_ARG="${KERNEL_LLVM:-}"
+if [[ -z "${LLVM_ARG}" ]]; then
+    if command -v clang >/dev/null 2>&1 && command -v ld.lld >/dev/null 2>&1; then
+        LLVM_ARG="1"
+    else
+        for v in 22 21 20 19 18; do
+            if command -v "clang-${v}" >/dev/null 2>&1 && command -v "ld.lld-${v}" >/dev/null 2>&1; then
+                LLVM_ARG="-${v}"
+                break
+            fi
+        done
+    fi
+fi
+if [[ -z "${LLVM_ARG}" ]]; then
+    echo "ERROR: Matched clang + ld.lld toolchain not found (install 'clang lld llvm' or versioned 'clang-N lld-N llvm-N')." >&2
+    exit 1
+fi
+
+CLANG_BIN="clang"
+if [[ "${LLVM_ARG}" == -* ]]; then
+    CLANG_BIN="clang${LLVM_ARG}"
+fi
+CLANG_MAJOR="$("${CLANG_BIN}" --version | sed -n 's/.*clang version \([0-9][0-9]*\)\..*/\1/p' | head -n 1 || true)"
+if [[ -z "${LIBCLANG_PATH:-}" && -n "${CLANG_MAJOR}" && -d "/usr/lib/llvm-${CLANG_MAJOR}/lib" ]]; then
+    if compgen -G "/usr/lib/llvm-${CLANG_MAJOR}/lib/libclang*.so*" >/dev/null 2>&1; then
+        export LIBCLANG_PATH="/usr/lib/llvm-${CLANG_MAJOR}/lib"
+    fi
+fi
+export LLVM="${LLVM_ARG}"
+export RUSTC="${RUSTC_BIN}"
+export BINDGEN="${BINDGEN_BIN}"
+
+# Verify Rust-for-Linux availability with system rustc (isolated from /opt/ml rustup 1.100)
+echo "==> Verifying make LLVM=${LLVM_ARG} rustavailable with RUSTC=${RUSTC_BIN} (${CLANG_BIN} v${CLANG_MAJOR:-?}, LIBCLANG_PATH=${LIBCLANG_PATH:-auto})"
+make -C "${SRC_DIR}" O="${BUILD_DIR}" LLVM="${LLVM_ARG}" RUSTC="${RUSTC_BIN}" BINDGEN="${BINDGEN_BIN}" rustavailable
 
 # 4. Generate deterministic base .config and merge NeuroCore Kconfig fragments
 echo "==> Merging NeuroCore Kconfig fragments (arch=${ARCH}, track=${TRACK})"
 if [[ "${ARCH}" == "arm64" ]]; then
-    make -C "${SRC_DIR}" O="${BUILD_DIR}" ARCH=arm64 LLVM=1 defconfig
+    make -C "${SRC_DIR}" O="${BUILD_DIR}" ARCH=arm64 LLVM="${LLVM_ARG}" RUSTC="${RUSTC_BIN}" BINDGEN="${BINDGEN_BIN}" defconfig
     FRAGMENTS=("${SCRIPT_DIR}/configs/neurocore_arm64.fragment")
 else
-    make -C "${SRC_DIR}" O="${BUILD_DIR}" LLVM=1 defconfig
+    make -C "${SRC_DIR}" O="${BUILD_DIR}" LLVM="${LLVM_ARG}" RUSTC="${RUSTC_BIN}" BINDGEN="${BINDGEN_BIN}" defconfig
     FRAGMENTS=("${SCRIPT_DIR}/configs/neurocore_x86_64.fragment")
 fi
 
@@ -85,7 +118,7 @@ fi
 KCONFIG_CONFIG="${BUILD_DIR}/.config" \
     "${SRC_DIR}/scripts/kconfig/merge_config.sh" -m -O "${BUILD_DIR}" "${BUILD_DIR}/.config" "${FRAGMENTS[@]}"
 
-make -C "${SRC_DIR}" O="${BUILD_DIR}" LLVM=1 RUSTC="${RUSTC_BIN}" BINDGEN="${BINDGEN_BIN}" olddefconfig
+make -C "${SRC_DIR}" O="${BUILD_DIR}" LLVM="${LLVM_ARG}" RUSTC="${RUSTC_BIN}" BINDGEN="${BINDGEN_BIN}" olddefconfig
 
 # Assert critical functional AND KSPP security Kconfig flags remained enabled after olddefconfig
 for flag in \
@@ -106,15 +139,16 @@ for flag in \
 done
 
 # 5. Build deterministic Debian kernel packages (linux-image + linux-headers)
+# Keep LOCALVERSION empty because CONFIG_LOCALVERSION="-neurocore" is already set in Kconfig.
 export KBUILD_BUILD_TIMESTAMP="@${SOURCE_DATE_EPOCH:-1763664000}"
 export KBUILD_BUILD_USER="neurocore"
 export KBUILD_BUILD_HOST="build.neurocore-os.org"
-export LOCALVERSION="-neurocore"
+export LOCALVERSION=""
 export KDEB_PKGVERSION="${VERSION}-neurocore1"
 
-echo "==> Compiling Linux ${VERSION}-neurocore with LLVM=1 (-j${JOBS})"
+echo "==> Compiling Linux ${VERSION}-neurocore with LLVM=${LLVM_ARG} (-j${JOBS})"
 make -C "${SRC_DIR}" O="${BUILD_DIR}" \
-    LLVM=1 \
+    LLVM="${LLVM_ARG}" \
     RUSTC="${RUSTC_BIN}" \
     BINDGEN="${BINDGEN_BIN}" \
     -j"${JOBS}" \
@@ -124,17 +158,18 @@ make -C "${SRC_DIR}" O="${BUILD_DIR}" \
 echo "==> Building out-of-tree Rust kernel module: neurocore_telemetry.ko"
 make -C "${SCRIPT_DIR}/rust-modules/neurocore_telemetry" \
     KDIR="${BUILD_DIR}" \
-    LLVM=1 \
+    LLVM="${LLVM_ARG}" \
     RUSTC="${RUSTC_BIN}" \
     BINDGEN="${BINDGEN_BIN}"
 
-MOD_DEST="${REPO_ROOT}/mkosi/mkosi.extra/usr/lib/modules/${VERSION}-neurocore/extra"
+KREL="$(cat "${BUILD_DIR}/include/config/kernel.release" 2>/dev/null || echo "${VERSION}-neurocore")"
+MOD_DEST="${REPO_ROOT}/mkosi/mkosi.extra/usr/lib/modules/${KREL}/extra"
 mkdir -p "${MOD_DEST}"
 cp -f "${SCRIPT_DIR}/rust-modules/neurocore_telemetry/neurocore_telemetry.ko" "${MOD_DEST}/"
 
-# 7. Stage generated .deb packages for mkosi local package injection
+# 7. Stage generated runtime kernel .deb packages (excluding multi-GB -dbg) for mkosi
 echo "==> Staging kernel .deb packages into ${OUT_DIR}"
-find "${SCRIPT_DIR}/build" -maxdepth 2 -type f -name 'linux-*.deb' -exec cp -vf {} "${OUT_DIR}/" \;
-cp -f "${BUILD_DIR}/.config" "${OUT_DIR}/config-${VERSION}-neurocore"
+find "${SCRIPT_DIR}/build" -maxdepth 2 -type f -name 'linux-*.deb' ! -name '*-dbg_*.deb' -exec cp -vf {} "${OUT_DIR}/" \;
+cp -f "${BUILD_DIR}/.config" "${OUT_DIR}/config-${KREL}"
 
 echo "==> Kernel build completed successfully."

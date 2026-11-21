@@ -2,38 +2,32 @@ SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
 SPDX-License-Identifier: GPL-2.0-only
 
 From: NeuroCore OS Contributors <kernel@neurocore-os.org>
-Subject: [PATCH 2/2] fbdev: fbmem: center single CLUT224 boot logo horizontally
+Subject: [PATCH 2/2] fbdev: fb_logo: default to single centered CLUT224 boot logo
 
-Centers the single NeuroCore penguin-and-gear CLUT224 boot logo horizontally on
-the early framebuffer console rather than tiling one copy per CPU core across
-the top edge, providing a clean handoff into the centered Plymouth splash.
+Enables Linux 6.18's native single centered framebuffer boot logo defaults
+(`fb_center_logo = true`, `fb_logo_count = 1`) in `drivers/video/fbdev/core/fb_logo.c`
+instead of tiling one copy per CPU core across the top edge, while preserving
+kernel command-line overrides (`fbcon=logo-count:...`).
 
 Signed-off-by: NeuroCore OS Contributors <kernel@neurocore-os.org>
 ---
- drivers/video/fbdev/core/fbmem.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ drivers/video/fbdev/core/fb_logo.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/video/fbdev/core/fbmem.c b/drivers/video/fbdev/core/fbmem.c
-index 2e7d8b5a0c11..9f3c42a8e112 100644
---- a/drivers/video/fbdev/core/fbmem.c
-+++ b/drivers/video/fbdev/core/fbmem.c
-@@ -527,8 +527,15 @@ int fb_show_logo_line(struct fb_info *info, int rotate,
- 	image.height = logo->height;
- 	image.data = logo->data;
+diff --git a/drivers/video/fbdev/core/fb_logo.c b/drivers/video/fbdev/core/fb_logo.c
+index 5550795f2a10..9c2e83c0f8d1 100644
+--- a/drivers/video/fbdev/core/fb_logo.c
++++ b/drivers/video/fbdev/core/fb_logo.c
+@@ -5,8 +5,8 @@
  
--	fb_do_show_logo(info, &image, rotate, n);
-+	/* Center a single NeuroCore OS emblem horizontally on the boot console */
-+	if (rotate == FB_ROTATE_UR && info->var.xres > image.width) {
-+		image.dx = (info->var.xres - image.width) / 2;
-+		image.dy = (info->var.yres > image.height * 2) ? (info->var.yres / 8) : 0;
-+		fb_do_show_logo(info, &image, rotate, 1);
-+	} else {
-+		fb_do_show_logo(info, &image, rotate, n);
-+	}
+ #include "fb_internal.h"
  
--	return image.height;
-+	return image.dy + image.height;
- }
+-bool fb_center_logo __read_mostly;
+-int fb_logo_count __read_mostly = -1;
++bool fb_center_logo __read_mostly = true;
++int fb_logo_count __read_mostly = 1;
  
+ static inline unsigned int safe_shift(unsigned int d, int n)
+ {
 -- 
 2.47.0
