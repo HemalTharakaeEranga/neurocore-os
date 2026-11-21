@@ -35,8 +35,8 @@ cp -v out/neurocore-0.1.0-alpha-* "/mnt/d/NeuroCore OS/out/"
 ```bash
 sudo apt-get update
 sudo apt-get install -y \
-  git make bc bison flex dwarves libssl-dev libelf-dev cpio kmod \
-  gcc g++ clang-19 lld-19 llvm-19 bindgen rustc rust-src \
+  git make bc bison flex dwarves libssl-dev libelf-dev libdw-dev cpio kmod openssl \
+  gcc g++ clang lld llvm libclang-dev bindgen rustc rust-src \
   mkosi squashfs-tools grub-pc-bin grub-efi-amd64-bin grub-common \
   xorriso mtools dosfstools parted qemu-utils qemu-system-x86 ovmf \
   imagemagick python3 python3-pil python3-venv curl zstd gpgv jq \

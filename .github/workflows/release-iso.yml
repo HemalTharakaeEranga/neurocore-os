@@ -39,7 +39,7 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           sudo apt-get update
           sudo apt-get install -y \
-            bc bison flex dwarves libssl-dev libelf-dev cpio kmod openssl \
+            bc bison flex dwarves libssl-dev libelf-dev libdw-dev cpio kmod openssl rsync \
             gcc g++ clang lld llvm libclang-dev bindgen rustc rust-src \
             imagemagick python3-pil grub-common grub-pc-bin grub-efi-amd64-bin \
             fonts-dejavu-core squashfs-tools xorriso mtools dosfstools \
