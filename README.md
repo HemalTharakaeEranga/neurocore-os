@@ -18,9 +18,11 @@ NeuroCore OS enforces strict license transparency across hardware boundaries:
 
 Neither profile pre-bundles Modular MAX (source-available MAX License), proprietary NVIDIA CUDA user-space libraries, or third-party LLM weights.
 
-## Quickstart (WSL2 / Linux Host)
+## Quickstart (Git, VirtualBox, USB & WSL2)
 
-See [docs/BUILDING_WSL2.md](docs/BUILDING_WSL2.md) for a complete Windows + WSL2 + VirtualBox 7.2 walkthrough.
+- **[docs/RUNBOOK.md](docs/RUNBOOK.md)** — Complete step-by-step operator & developer runbook: Git clone/pull/push/merge workflow, downloading or building `.iso`/`.vdi` images, VirtualBox 7.2 installation, bootable USB pen drive & laptop guide, and secure SSH tunneling.
+- **[docs/BUILDING_WSL2.md](docs/BUILDING_WSL2.md)** — Local Windows + WSL2 build instructions.
+- **[docs/SECURITY_ARCHITECTURE.md](docs/SECURITY_ARCHITECTURE.md)** — Defense-in-depth hardening audit & GitHub Actions verification workflow.
 
 ```bash
 make doctor          # Verify host tools (Debian/Ubuntu or WSL2)
