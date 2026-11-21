@@ -5,6 +5,8 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # NeuroCore OS v0.1.0-alpha ("Spark") — Operator & Developer Runbook
 
+![How to Install & Use NeuroCore OS — User Journey](diagrams/03-user-onboarding-journey.svg)
+
 This step-by-step runbook covers everything you need to:
 
 1. **Clone, pull, branch, commit, push, and merge** code cleanly with Git & GitHub.
