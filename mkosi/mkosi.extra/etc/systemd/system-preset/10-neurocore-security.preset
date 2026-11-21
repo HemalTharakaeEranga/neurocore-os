@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 NeuroCore OS Contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Higher-priority systemd preset overriding Debian defaults during `mkosi`
+# preset application so SSH remains strictly disabled by default while
+# firewall, AppArmor MAC, and NeuroCore services remain enabled.
+
+disable ssh.service
+disable ssh.socket
+
+enable nftables.service
+enable apparmor.service
+enable neurocore-ssh-keygen.service
+enable neurocore-daemon.service
+enable neurocore-mlflow.service
+enable neurocore-jupyter.service
+enable neurocore-llama.service
+enable scx_loader.service

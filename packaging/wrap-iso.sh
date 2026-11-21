@@ -84,14 +84,14 @@ else
 fi
 
 # 2. Extract vmlinuz and initrd.img and enforce GRUB's 462 MiB BIOS ceiling
-VMLINUZ="$(sudo find "${MNT_ROOT}/boot" -maxdepth 1 -type f -name 'vmlinuz-*' 2>/dev/null | sort -V | tail -n 1 || true)"
+VMLINUZ="$(sudo find "${MNT_ROOT}/boot" "${MNT_ROOT}/usr/share/neurocore/boot" -maxdepth 1 -type f -name 'vmlinuz-*' 2>/dev/null | sort -V | tail -n 1 || true)"
 if [[ -z "${VMLINUZ}" ]]; then
     VMLINUZ="$(sudo find "${MNT_ROOT}/usr/lib/modules" -maxdepth 2 -type f -name 'vmlinuz' 2>/dev/null | sort -V | tail -n 1 || true)"
 fi
-INITRD="$(sudo find "${MNT_ROOT}/boot" -maxdepth 1 -type f -name 'initrd.img-*' 2>/dev/null | sort -V | tail -n 1 || true)"
+INITRD="$(sudo find "${MNT_ROOT}/boot" "${MNT_ROOT}/usr/share/neurocore/boot" -maxdepth 1 -type f -name 'initrd.img-*' 2>/dev/null | sort -V | tail -n 1 || true)"
 if [[ -z "${VMLINUZ}" || -z "${INITRD}" ]]; then
-    echo "ERROR: vmlinuz-* or initrd.img-* missing under ${MNT_ROOT}/boot" >&2
-    sudo ls -la "${MNT_ROOT}/boot" >&2 || true
+    echo "ERROR: vmlinuz-* or initrd.img-* missing under ${MNT_ROOT}/boot or ${MNT_ROOT}/usr/share/neurocore/boot" >&2
+    sudo ls -la "${MNT_ROOT}/boot" "${MNT_ROOT}/usr/share/neurocore/boot" >&2 || true
     exit 1
 fi
 
@@ -110,10 +110,13 @@ cp -f "${SCRIPT_DIR}/grub-iso.cfg" "${ISO_STAGE}/boot/grub/grub.cfg"
 if [[ -d "${MNT_ROOT}/boot/grub/themes/neurocore" ]]; then
     mkdir -p "${ISO_STAGE}/boot/grub/themes"
     cp -a "${MNT_ROOT}/boot/grub/themes/neurocore" "${ISO_STAGE}/boot/grub/themes/"
+elif [[ -d "${MNT_ROOT}/usr/share/neurocore/boot/grub-theme-neurocore" ]]; then
+    mkdir -p "${ISO_STAGE}/boot/grub/themes"
+    cp -a "${MNT_ROOT}/usr/share/neurocore/boot/grub-theme-neurocore" "${ISO_STAGE}/boot/grub/themes/neurocore"
 fi
 
 # 3. Deterministic Zstd SquashFS compression pinned to SOURCE_DATE_EPOCH
-# Explicitly strip any static SSH host keys, histories, or transient tmp files.
+# Explicitly strip any static SSH host keys, histories, staged boot copies, or transient tmp files.
 echo "==> Compressing /live/filesystem.squashfs (Zstd level 19, SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH})"
 sudo mksquashfs "${MNT_ROOT}" "${ISO_STAGE}/live/filesystem.squashfs" \
     -comp zstd -Xcompression-level 19 -b 1M \
@@ -122,6 +125,7 @@ sudo mksquashfs "${MNT_ROOT}" "${ISO_STAGE}/live/filesystem.squashfs" \
     -wildcards \
     -e 'boot/vmlinuz-*' \
        'boot/initrd.img-*' \
+       'usr/share/neurocore/boot/*' \
        'etc/ssh/ssh_host_*' \
        'root/.bash_history' \
        'home/*/.bash_history' \

@@ -172,6 +172,15 @@ def audit_os_defense_in_depth(r: AuditReport) -> None:
         "SSH disabled by default on Live ISO",
         "postinst should disable ssh.service by default",
     )
+    preset = _read("mkosi/mkosi.extra/etc/systemd/system-preset/10-neurocore-security.preset")
+    r.check(
+        "disable ssh.service" in preset
+        and "disable ssh.socket" in preset
+        and "enable nftables.service" in preset
+        and "enable apparmor.service" in preset,
+        "Systemd preset prevents Debian defaults from re-enabling SSH",
+        "10-neurocore-security.preset missing ssh disable or nftables/apparmor enable",
+    )
 
     apparmor = _read("mkosi/mkosi.extra/etc/apparmor.d/usr.local.libexec.neurocore-daemon")
     r.check(

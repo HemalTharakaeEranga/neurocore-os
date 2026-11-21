@@ -84,7 +84,7 @@ fi
 
 if command -v update-initramfs >/dev/null 2>&1; then
     shopt -s nullglob
-    for moddir in /lib/modules/* /usr/lib/modules/*; do
+    for moddir in /usr/lib/modules/*; do
         [[ -d "${moddir}" ]] || continue
         kver="$(basename "${moddir}")"
         if [[ -f "/boot/initrd.img-${kver}" ]]; then
@@ -95,6 +95,18 @@ if command -v update-initramfs >/dev/null 2>&1; then
     done
     shopt -u nullglob
 fi
+
+# Preserve live-ISO boot artifacts under /usr/share/neurocore/boot so they
+# remain accessible inside the root partition even when mkosi moves /boot to ESP.
+install -d -m 0755 /usr/share/neurocore/boot
+shopt -s nullglob
+for f in /boot/vmlinuz-* /boot/initrd.img-*; do
+    cp -f "${f}" /usr/share/neurocore/boot/
+done
+if [[ -d /boot/grub/themes/neurocore ]]; then
+    cp -a /boot/grub/themes/neurocore /usr/share/neurocore/boot/grub-theme-neurocore
+fi
+shopt -u nullglob
 
 # 6. Enable hardened NeuroCore services, firewall, and AppArmor MAC
 for unit in \
