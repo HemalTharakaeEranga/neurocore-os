@@ -44,7 +44,7 @@ cleanup() {
     set +e
     mountpoint -q "${MNT_ROOT}" && sudo umount "${MNT_ROOT}"
     [[ -n "${LOOP_DEV}" ]] && sudo losetup -d "${LOOP_DEV}"
-    rm -rf "${WORK_DIR}"
+    sudo rm -rf "${WORK_DIR}"
 }
 trap cleanup EXIT
 
@@ -75,22 +75,27 @@ SPDX_OUT="${OUT_DIR}/neurocore-${VERSION}-${PROFILE}.spdx.json"
 CDX_OUT="${OUT_DIR}/neurocore-${VERSION}-${PROFILE}.cdx.json"
 if command -v syft >/dev/null 2>&1; then
     echo "==> Generating Syft SPDX and CycloneDX SBOMs from staged rootfs"
-    syft "dir:${MNT_ROOT}" \
+    sudo syft "dir:${MNT_ROOT}" \
         -o "spdx-json=${SPDX_OUT}" \
         -o "cyclonedx-json=${CDX_OUT}"
+    sudo chown "$(id -u):$(id -g)" "${SPDX_OUT}" "${CDX_OUT}" || true
 else
     echo "WARNING: 'syft' not installed; skipping SBOM generation." >&2
 fi
 
 # 2. Extract vmlinuz and initrd.img and enforce GRUB's 462 MiB BIOS ceiling
-VMLINUZ="$(find "${MNT_ROOT}/boot" -maxdepth 1 -type f -name 'vmlinuz-*' | sort -V | tail -n 1)"
-INITRD="$(find "${MNT_ROOT}/boot" -maxdepth 1 -type f -name 'initrd.img-*' | sort -V | tail -n 1)"
+VMLINUZ="$(sudo find "${MNT_ROOT}/boot" "${MNT_ROOT}/usr/share/neurocore/boot" -maxdepth 1 -type f -name 'vmlinuz-*' 2>/dev/null | sort -V | tail -n 1 || true)"
+if [[ -z "${VMLINUZ}" ]]; then
+    VMLINUZ="$(sudo find "${MNT_ROOT}/usr/lib/modules" -maxdepth 2 -type f -name 'vmlinuz' 2>/dev/null | sort -V | tail -n 1 || true)"
+fi
+INITRD="$(sudo find "${MNT_ROOT}/boot" "${MNT_ROOT}/usr/share/neurocore/boot" -maxdepth 1 -type f -name 'initrd.img-*' 2>/dev/null | sort -V | tail -n 1 || true)"
 if [[ -z "${VMLINUZ}" || -z "${INITRD}" ]]; then
-    echo "ERROR: vmlinuz-* or initrd.img-* missing under ${MNT_ROOT}/boot" >&2
+    echo "ERROR: vmlinuz-* or initrd.img-* missing under ${MNT_ROOT}/boot or ${MNT_ROOT}/usr/share/neurocore/boot" >&2
+    sudo ls -la "${MNT_ROOT}/boot" "${MNT_ROOT}/usr/share/neurocore/boot" >&2 || true
     exit 1
 fi
 
-INITRD_BYTES="$(stat -c '%s' "${INITRD}")"
+INITRD_BYTES="$(sudo stat -c '%s' "${INITRD}")"
 INITRD_MIB="$(( INITRD_BYTES / 1048576 ))"
 echo "==> Kernel: $(basename "${VMLINUZ}"), Initrd: $(basename "${INITRD}") (${INITRD_MIB} MiB)"
 if (( INITRD_MIB >= 400 )); then
@@ -98,16 +103,20 @@ if (( INITRD_MIB >= 400 )); then
     exit 1
 fi
 
-cp -f "${VMLINUZ}" "${ISO_STAGE}/live/vmlinuz"
-cp -f "${INITRD}" "${ISO_STAGE}/live/initrd.img"
+sudo cp -f "${VMLINUZ}" "${ISO_STAGE}/live/vmlinuz"
+sudo cp -f "${INITRD}" "${ISO_STAGE}/live/initrd.img"
+sudo chown "$(id -u):$(id -g)" "${ISO_STAGE}/live/vmlinuz" "${ISO_STAGE}/live/initrd.img"
 cp -f "${SCRIPT_DIR}/grub-iso.cfg" "${ISO_STAGE}/boot/grub/grub.cfg"
 if [[ -d "${MNT_ROOT}/boot/grub/themes/neurocore" ]]; then
     mkdir -p "${ISO_STAGE}/boot/grub/themes"
     cp -a "${MNT_ROOT}/boot/grub/themes/neurocore" "${ISO_STAGE}/boot/grub/themes/"
+elif [[ -d "${MNT_ROOT}/usr/share/neurocore/boot/grub-theme-neurocore" ]]; then
+    mkdir -p "${ISO_STAGE}/boot/grub/themes"
+    cp -a "${MNT_ROOT}/usr/share/neurocore/boot/grub-theme-neurocore" "${ISO_STAGE}/boot/grub/themes/neurocore"
 fi
 
 # 3. Deterministic Zstd SquashFS compression pinned to SOURCE_DATE_EPOCH
-# Explicitly strip any static SSH host keys, histories, or transient tmp files.
+# Explicitly strip any static SSH host keys, histories, staged boot copies, or transient tmp files.
 echo "==> Compressing /live/filesystem.squashfs (Zstd level 19, SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH})"
 sudo mksquashfs "${MNT_ROOT}" "${ISO_STAGE}/live/filesystem.squashfs" \
     -comp zstd -Xcompression-level 19 -b 1M \
@@ -116,6 +125,7 @@ sudo mksquashfs "${MNT_ROOT}" "${ISO_STAGE}/live/filesystem.squashfs" \
     -wildcards \
     -e 'boot/vmlinuz-*' \
        'boot/initrd.img-*' \
+       'usr/share/neurocore/boot/*' \
        'etc/ssh/ssh_host_*' \
        'root/.bash_history' \
        'home/*/.bash_history' \
@@ -123,6 +133,9 @@ sudo mksquashfs "${MNT_ROOT}" "${ISO_STAGE}/live/filesystem.squashfs" \
        'var/tmp/*'
 
 # 4. Assemble reproducible tri-mode hybrid BIOS/UEFI ISO via grub-mkrescue
+# Note: arguments after `--` use native xorriso syntax (`-volume_date uuid`),
+# while SOURCE_DATE_EPOCH clamps all RockRidge/ISO/ESP timestamps cleanly.
+export SOURCE_DATE_EPOCH
 ISO_DATE="$(date -u -d "@${SOURCE_DATE_EPOCH}" +%Y%m%d%H%M%S00)"
 ISO_OUT="${OUT_DIR}/neurocore-${VERSION}-${PROFILE}-${ARCH}.iso"
 VOLID="NEUROCORE_010"
@@ -132,7 +145,7 @@ grub-mkrescue \
     -o "${ISO_OUT}" \
     "${ISO_STAGE}" \
     -- -volid "${VOLID}" \
-    --modification-date="${ISO_DATE}"
+    -volume_date uuid "${ISO_DATE}"
 
 # 5. Verify El Torito BIOS + UEFI boot records
 echo "==> Verifying El Torito boot catalog via xorriso"

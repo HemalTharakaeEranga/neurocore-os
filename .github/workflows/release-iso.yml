@@ -36,13 +36,14 @@ jobs:
 
       - name: Install host build, packaging, and compliance tools
         run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           sudo apt-get update
           sudo apt-get install -y \
             bc bison flex dwarves libssl-dev libelf-dev cpio kmod \
             gcc g++ clang-19 lld-19 llvm-19 bindgen rustc rust-src \
             imagemagick python3-pil grub-common grub-pc-bin grub-efi-amd64-bin \
             fonts-dejavu-core squashfs-tools xorriso mtools dosfstools \
-            debian-archive-keyring systemd-container parted e2fsprogs \
+            debian-archive-keyring systemd-container systemd-repart parted e2fsprogs \
             qemu-system-x86 qemu-utils ovmf mkosi zstd jq gpgv debhelper dpkg-dev
 
       - name: Install verified Syft & Grype binaries (checksum-checked, no curl|sh)

@@ -172,6 +172,15 @@ def audit_os_defense_in_depth(r: AuditReport) -> None:
         "SSH disabled by default on Live ISO",
         "postinst should disable ssh.service by default",
     )
+    preset = _read("mkosi/mkosi.extra/etc/systemd/system-preset/10-neurocore-security.preset")
+    r.check(
+        "disable ssh.service" in preset
+        and "disable ssh.socket" in preset
+        and "enable nftables.service" in preset
+        and "enable apparmor.service" in preset,
+        "Systemd preset prevents Debian defaults from re-enabling SSH",
+        "10-neurocore-security.preset missing ssh disable or nftables/apparmor enable",
+    )
 
     apparmor = _read("mkosi/mkosi.extra/etc/apparmor.d/usr.local.libexec.neurocore-daemon")
     r.check(
@@ -185,6 +194,18 @@ def audit_os_defense_in_depth(r: AuditReport) -> None:
         "install dccp /bin/false" in blacklist and "install cramfs /bin/false" in blacklist,
         "Kernel module attack-surface blacklist",
         "missing module blacklist entries",
+    )
+
+    r.check(
+        (ROOT / "mkosi/mkosi.repart/00-esp.conf").is_file()
+        and (ROOT / "mkosi/mkosi.repart/10-root.conf").is_file(),
+        "Deterministic mkosi.repart GPT ESP + ext4 root layout",
+        "missing mkosi/mkosi.repart/{00-esp,10-root}.conf",
+    )
+    r.check(
+        "getent group plugdev" in postinst,
+        "Safe optional group handling in mkosi.postinst.chroot",
+        "postinst should guard optional plugdev group",
     )
 
 
@@ -284,6 +305,19 @@ def audit_github_workflows(r: AuditReport) -> None:
     wf_dir = ROOT / ".github/workflows"
     wfs = sorted(wf_dir.glob("*.yml"))
     r.check(len(wfs) >= 4, "All 4 GitHub Actions workflows present", f"found {len(wfs)}")
+
+    sec_wf = _read(".github/workflows/security-audit.yml")
+    r.check(
+        "grype" in sec_wf and "trivy" in sec_wf and "dependency-review-action" in sec_wf,
+        "Always-on Grype + Trivy + PR dependency vulnerability scanning",
+        "security-audit.yml missing always-on Grype/Trivy vulnerability scan",
+    )
+    ci_wf = _read(".github/workflows/ci-build-test.yml")
+    r.check(
+        "if-no-files-found: ignore" in ci_wf,
+        "CI boot-log artifact upload handles missing logs cleanly",
+        "ci-build-test.yml missing if-no-files-found: ignore",
+    )
 
     for wf in wfs:
         txt = wf.read_text(encoding="utf-8")
