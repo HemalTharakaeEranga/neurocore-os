@@ -230,7 +230,7 @@ jobs:
 
       - name: PR Diff Dependency Review (runs automatically on Pull Requests)
         if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+        uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v4
         with:
           fail-on-severity: high
           deny-licenses: "BUSL-1.1, SSPL-1.0, Elastic-2.0"
