@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # Zizmor GitHub Actions security policy for NeuroCore OS.
-# Enforces template-injection, artipacked, excessive-permissions,
-# dangerous-triggers, impostor-commit, and cache-poisoning audits while
-# allowing versioned major-tag action refs (e.g. @v6, @v4) alongside Dependabot.
+# Enforces full 40-character immutable commit SHA pinning (unpinned-uses)
+# alongside template-injection, artipacked, excessive-permissions,
+# dangerous-triggers, impostor-commit, and cache-poisoning audits.
 
 rules:
   unpinned-uses:
-    disable: true
+    disable: false

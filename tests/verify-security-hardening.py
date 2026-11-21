@@ -353,6 +353,17 @@ def audit_github_workflows(r: AuditReport) -> None:
             f"Workflow free of world-writable 0666 device permissions: {rel}",
             "found world-writable 0666 mode",
         )
+        unpinned = [
+            ln.strip()
+            for ln in txt.splitlines()
+            if re.match(r"^\s*-?\s*uses:\s+", ln)
+            and not re.search(r"@[0-9a-f]{40}(?:\s+#|\s*$)", ln)
+        ]
+        r.check(
+            not unpinned,
+            f"All GitHub Actions pinned to 40-char commit SHA: {rel}",
+            f"unpinned actions: {unpinned}",
+        )
 
 
 def audit_manifests_and_eol(r: AuditReport) -> None:
